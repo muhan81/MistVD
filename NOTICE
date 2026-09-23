@@ -1,0 +1,70 @@
+NekoVideo — MODIFIED VERSION
+============================
+
+This repository is a MODIFIED version of NekoVideo, as required by
+GNU General Public License version 3, section 5(a).
+
+  Original work : NekoVideo
+  Copyright (C) : 2025-2026 NKL's
+  Upstream      : https://github.com/FellipitoPV/NekoVideo
+  License       : GNU General Public License v3.0 (see LICENSE in this repo)
+
+  Modified by   : muhan81
+  Fork          : https://github.com/muhan81/NekoVideo
+  Date          : 2026-09-23, and subsequent dates as recorded below
+
+
+STATEMENT OF MODIFICATIONS
+--------------------------
+
+The following modifications have been made to the original work. Dates refer
+to the date the change was made.
+
+2026-09-23
+  * All storage-root resolution was unified into a single component
+    (components/helpers/storage/StorageRoot.kt). Hard-coded external-storage
+    paths (/storage/emulated/0) were removed from the application logic.
+  * Added a storage-volume picker, allowing the user to select separately the
+    volume used for browsing and the volume used for the private vault.
+  * Added a vault migration wizard (components/helpers/storage/VaultMigrator.kt):
+    when the vault volume is changed, the whole locked folder tree is copied,
+    verified and the old copy removed only after successful verification.
+  * Additional user-interface strings were added in the nine supported
+    languages.
+  * Version numbers were changed to versionName 1.16 / versionCode 41.
+
+  * Added NOTICE (this file) and pointed the F-Droid metadata
+    (fdroid-metadata/com.nkls.nekovideo.yml) at this fork instead of upstream.
+
+Later modifications are recorded in the project's change log. The application
+display name and the launcher icon are also being changed to "MistVD". The
+application ID (com.nkls.nekovideo) is intentionally kept UNCHANGED so that
+users can upgrade over an existing installation.
+
+
+LICENSE
+-------
+
+This modified version is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+The complete corresponding source code of this modified version is available
+at the fork URL given above.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <https://www.gnu.org/licenses/>.
+
+
+中文说明
+--------
+
+本仓库是 NekoVideo 的**修改版**。按 GPLv3 第 5(a) 条，此处声明：本版本已被修改，
+修改人与修改日期见上。原作品版权归 NKL's（上游：FellipitoPV/NekoVideo）所有，
+本修改版同样以 GPLv3 授权发布，完整源代码见上方 fork 地址。
+应用包名（com.nkls.nekovideo）刻意保持不变，以便用户直接覆盖升级。

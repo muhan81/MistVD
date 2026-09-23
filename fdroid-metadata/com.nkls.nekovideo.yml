@@ -4,11 +4,14 @@ Categories:
 License: GPL-3.0-only
 # ^ SUBSTITUIR pela licença real escolhida (deve bater com o arquivo LICENSE na raiz).
 
-AuthorName: NKL's
-SourceCode: https://github.com/FellipitoPV/NekoVideo
-IssueTracker: https://github.com/FellipitoPV/NekoVideo/issues
+# NOTE: This file only takes effect if it is submitted to the upstream
+# fdroiddata repository. Keeping an updated copy inside the fork is harmless
+# and keeps the metadata honest (source code pointer = this fork).
+AuthorName: muhan81
+SourceCode: https://github.com/muhan81/NekoVideo
+IssueTracker: https://github.com/muhan81/NekoVideo/issues
 
-AutoName: NekoVideo
+AutoName: MistVD
 
 Description: |-
   A modern video player for Android with folder management, gesture controls,
@@ -28,7 +31,7 @@ Description: |-
   * Cast to DLNA/UPnP devices on the local network
 
 RepoType: git
-Repo: https://github.com/FellipitoPV/NekoVideo
+Repo: https://github.com/muhan81/NekoVideo
 
 Builds:
   - versionName: 1.1.1
@@ -61,5 +64,5 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.3.13
-CurrentVersionCode: 35
+CurrentVersion: 1.16
+CurrentVersionCode: 41
