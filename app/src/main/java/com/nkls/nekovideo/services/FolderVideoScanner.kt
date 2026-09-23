@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.nkls.nekovideo.components.helpers.FolderLockManager
 import com.nkls.nekovideo.components.helpers.supportedVideoExtensions
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -230,12 +231,14 @@ object FolderVideoScanner {
     }
 
     private suspend fun scanDirectFolders(folderMap: ConcurrentHashMap<String, FolderInfo>) {
+        // Derivado do volume de listagem atual — antes era literal "/storage/emulated/0".
+        val root = StorageRoot.browseRoot
         val directScanPaths = listOf(
-            "/storage/emulated/0/Download",
-            "/storage/emulated/0/Downloads",
-            "/storage/emulated/0/Movies",
-            "/storage/emulated/0/DCIM",
-            "/storage/emulated/0/Pictures"
+            "$root/Download",
+            "$root/Downloads",
+            "$root/Movies",
+            "$root/DCIM",
+            "$root/Pictures"
         )
 
         directScanPaths.forEach { path ->
@@ -327,12 +330,14 @@ object FolderVideoScanner {
     }
 
     private suspend fun scanSecureFolders(context: Context, folderMap: ConcurrentHashMap<String, FolderInfo>) {
+        // Derivado do volume de listagem atual — antes era literal "/storage/emulated/0".
+        val root = StorageRoot.browseRoot
         val rootDirs = listOf(
-            "/storage/emulated/0/",
-            "/storage/emulated/0/Download/",
-            "/storage/emulated/0/Movies/",
-            "/storage/emulated/0/DCIM/",
-            "/storage/emulated/0/Pictures/"
+            "$root/",
+            "$root/Download/",
+            "$root/Movies/",
+            "$root/DCIM/",
+            "$root/Pictures/"
         )
 
         rootDirs.forEach { rootPath ->

@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.lifecycleScope
 import com.nkls.nekovideo.components.OptimizedThumbnailManager
 import com.nkls.nekovideo.components.helpers.FilesManager
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import com.nkls.nekovideo.components.helpers.PinnedFoldersStore
 import com.nkls.nekovideo.components.helpers.PlaylistManager
 import com.nkls.nekovideo.components.helpers.VideoTagStore
@@ -206,6 +207,10 @@ class MainActivity : AppCompatActivity() {
 
         applySystemBarsForTheme(themeManager.themeMode.value)
         FilesManager.SecureFoldersVisibility.resetOnAppStart(this)
+
+        // ✅ Raiz de armazenamento (volume escolhido pelo usuário) — precisa vir ANTES
+        // de qualquer leitura de caminho e antes de montar a interface.
+        StorageRoot.init(this)
 
         // PROCESSAR intent inicial
         handleNotificationIntent(intent)

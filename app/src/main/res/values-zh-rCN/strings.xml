@@ -501,4 +501,30 @@
     <string name="player_seek_backward">快退</string>
     <string name="player_audio_track_number">音频 %1$d</string>
     <string name="player_track_number">轨道 %1$d</string>
+    <!-- 存储位置（设置 → 存储） -->
+    <string name="storage_location_section">存储位置</string>
+    <string name="storage_location_title">选择位置</string>
+    <string name="storage_location_browse_section">浏览位置（从哪里读取视频）</string>
+    <string name="storage_location_vault_section">加密库位置（加密后的文件存在哪里）</string>
+    <string name="storage_location_follow_system">跟随系统（默认）</string>
+    <string name="storage_location_removable">存储卡</string>
+    <string name="storage_location_internal">内部存储</string>
+    <string name="storage_location_free_space">剩余 %1$s / 共 %2$s</string>
+    <string name="storage_location_current">当前</string>
+    <string name="storage_location_saved">位置已更新</string>
+    <string name="storage_location_unavailable">此位置当前不可用（存储卡可能已拔出）</string>
+    <string name="storage_location_fat32_warning">本应用不支持 FAT32 格式的存储卡——该格式下单文件上限为 4 GB。如果你的存储卡是 FAT32，请先格式化为 exFAT 再使用。</string>
+    <string name="storage_unavailable_title">存储位置不可用</string>
+    <string name="storage_unavailable_description">所选的存储卷当前无法访问。如果你使用的是存储卡，请确认已插好。库里的内容仍然存在，没有任何东西被删除。</string>
+    <string name="storage_vault_not_mounted">存储卡未挂载</string>
+    <!-- 第二阶段：切换存储卷时的加密库迁移 -->
+    <string name="storage_migration_title">迁移加密库？</string>
+    <string name="storage_migration_message">当前加密库位置有内容。\n\n• 搬过去：把整个加密库（含原名对照表）复制到新位置，最后删除旧数据。视频体积大，可能需要几分钟，且新位置需要有足够的剩余空间。\n• 先不搬：只更改位置，旧数据留在原地。\n• 取消：不做任何更改。</string>
+    <string name="storage_migration_migrate">搬过去</string>
+    <string name="storage_migration_keep">先不搬</string>
+    <string name="storage_migration_running">正在迁移加密库…</string>
+    <string name="storage_migration_running_hint">视频较大时可能需要几分钟，请保持应用在前台运行。</string>
+    <string name="storage_migration_success">迁移完成</string>
+    <string name="storage_migration_failed">迁移失败，旧数据未受影响。</string>
+    <string name="storage_migration_target_exists">目标位置已存在有内容的加密库目录，无法迁移。</string>
 </resources>

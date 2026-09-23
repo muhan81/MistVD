@@ -504,4 +504,44 @@
     <string name="player_seek_backward">Rückwärts suchen</string>
     <string name="player_audio_track_number">Audio %1$d</string>
     <string name="player_track_number">Spur %1$d</string>
+
+    <!-- Pastas fixadas (texto herdado do upstream, faltava neste idioma) -->
+    <string name="action_pin_folder">Ordner anheften</string>
+    <string name="action_unpin_folder">Anheftung aufheben</string>
+    <string name="pin_folder_already_pinned">Dieser Ordner ist bereits angeheftet</string>
+    <string name="pin_folder_invalid">Nur vorhandene Ordner können angeheftet werden</string>
+    <string name="pin_folder_limit_reached">Limit für angeheftete Ordner erreicht</string>
+    <string name="pin_folder_success">Ordner angeheftet</string>
+    <string name="pinned_folder_unavailable">Ordner nicht gefunden</string>
+    <string name="pinned_folders_title">Angeheftete Ordner</string>
+    <string name="unpin_folder_confirm_message">\"%1$s\" aus den angehefteten Ordnern entfernen?</string>
+    <string name="unpin_folder_confirm_title">Ordner lösen?</string>
+    <string name="unpin_folder_success">Ordner gelöst</string>
+
+    <!-- Local de armazenamento (funcionalidade nova) -->
+    <string name="storage_location_browse_section">Wo Videos gelesen werden</string>
+    <string name="storage_location_current">Aktuell</string>
+    <string name="storage_location_fat32_warning">Diese App unterstützt keine Speicherkarten im FAT32-Format – in diesem Format liegt das Limit bei 4 GB pro Datei. Falls Ihre Karte FAT32 ist, formatieren Sie sie vor der Nutzung als exFAT.</string>
+    <string name="storage_location_follow_system">System folgen (Standard)</string>
+    <string name="storage_location_free_space">%1$s frei von %2$s</string>
+    <string name="storage_location_internal">Interner Speicher</string>
+    <string name="storage_location_removable">Speicherkarte</string>
+    <string name="storage_location_saved">Speicherort aktualisiert</string>
+    <string name="storage_location_section">Speicherort</string>
+    <string name="storage_location_title">Speicherort</string>
+    <string name="storage_location_unavailable">Dieser Speicherort ist derzeit nicht verfügbar (die Karte wurde möglicherweise entfernt)</string>
+    <string name="storage_location_vault_section">Wo der private Tresor gespeichert wird</string>
+    <string name="storage_unavailable_description">Der gewählte Speicherort ist derzeit nicht erreichbar. Falls Sie eine Speicherkarte verwenden, prüfen Sie, ob sie eingelegt ist. Ihre Inhalte sind weiterhin gespeichert – es wurde nichts gelöscht.</string>
+    <string name="storage_unavailable_title">Speicherort nicht verfügbar</string>
+    <string name="storage_vault_not_mounted">Speicherkarte nicht eingebunden</string>
+    <!-- Phase 2: Tresor-Migration beim Wechsel des Speichervolumens -->
+    <string name="storage_migration_title">Tresor verschieben?</string>
+    <string name="storage_migration_message">Der Tresor am aktuellen Speicherort hat Inhalte.\n\n• Verschieben: kopiert den gesamten Tresor (einschließlich der Tabelle mit den Originalnamen) an den neuen Ort und löscht am Ende die alten Daten. Videos sind groß: das kann mehrere Minuten dauern und am neuen Ort wird ausreichend freier Speicher benötigt.\n• Nicht verschieben: ändert nur den Speicherort; die alten Daten bleiben, wo sie sind.\n• Abbrechen: ändert nichts.</string>
+    <string name="storage_migration_migrate">Verschieben</string>
+    <string name="storage_migration_keep">Nicht verschieben</string>
+    <string name="storage_migration_running">Tresor wird verschoben…</string>
+    <string name="storage_migration_running_hint">Große Videos können mehrere Minuten dauern. App geöffnet lassen.</string>
+    <string name="storage_migration_success">Tresor erfolgreich verschoben</string>
+    <string name="storage_migration_failed">Verschieben fehlgeschlagen. Die alten Daten sind unberührt.</string>
+    <string name="storage_migration_target_exists">Am Zielort existiert bereits ein Tresor-Ordner mit Inhalt. Verschieben nicht möglich.</string>
 </resources>

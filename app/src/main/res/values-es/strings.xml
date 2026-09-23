@@ -504,4 +504,44 @@
     <string name="player_seek_backward">Retroceder búsqueda</string>
     <string name="player_audio_track_number">Audio %1$d</string>
     <string name="player_track_number">Pista %1$d</string>
+
+    <!-- Pastas fixadas (texto herdado do upstream, faltava neste idioma) -->
+    <string name="action_pin_folder">Fijar carpeta</string>
+    <string name="action_unpin_folder">Dejar de fijar carpeta</string>
+    <string name="pin_folder_already_pinned">Esta carpeta ya está fijada</string>
+    <string name="pin_folder_invalid">Solo se pueden fijar carpetas existentes</string>
+    <string name="pin_folder_limit_reached">Se alcanzó el límite de carpetas fijadas</string>
+    <string name="pin_folder_success">Carpeta fijada</string>
+    <string name="pinned_folder_unavailable">Carpeta no encontrada</string>
+    <string name="pinned_folders_title">Carpetas fijadas</string>
+    <string name="unpin_folder_confirm_message">¿Quitar \"%1$s\" de las carpetas fijadas?</string>
+    <string name="unpin_folder_confirm_title">¿Dejar de fijar la carpeta?</string>
+    <string name="unpin_folder_success">Se dejó de fijar la carpeta</string>
+
+    <!-- Local de armazenamento (funcionalidade nova) -->
+    <string name="storage_location_browse_section">Dónde leer los vídeos</string>
+    <string name="storage_location_current">Actual</string>
+    <string name="storage_location_fat32_warning">Esta aplicación no admite tarjetas de memoria con formato FAT32: en ese formato el límite es de 4 GB por archivo. Si tu tarjeta está en FAT32, formatéala como exFAT antes de usarla.</string>
+    <string name="storage_location_follow_system">Seguir el sistema (predeterminado)</string>
+    <string name="storage_location_free_space">%1$s libres de %2$s</string>
+    <string name="storage_location_internal">Almacenamiento interno</string>
+    <string name="storage_location_removable">Tarjeta de memoria</string>
+    <string name="storage_location_saved">Ubicación actualizada</string>
+    <string name="storage_location_section">Ubicación de almacenamiento</string>
+    <string name="storage_location_title">Ubicación de almacenamiento</string>
+    <string name="storage_location_unavailable">Esta ubicación no está disponible ahora mismo (puede que la tarjeta se haya extraído)</string>
+    <string name="storage_location_vault_section">Dónde guardar la caja fuerte privada</string>
+    <string name="storage_unavailable_description">No se puede acceder al volumen seleccionado ahora mismo. Si usas una tarjeta de memoria, comprueba que esté insertada. Tu contenido sigue guardado: no se ha borrado nada.</string>
+    <string name="storage_unavailable_title">Ubicación de almacenamiento no disponible</string>
+    <string name="storage_vault_not_mounted">Tarjeta de memoria no montada</string>
+    <!-- Fase 2: migración de la bóveda al cambiar de volumen -->
+    <string name="storage_migration_title">¿Mover la bóveda?</string>
+    <string name="storage_migration_message">La bóveda en la ubicación actual tiene contenido.\n\n• Mover: copia toda la bóveda (incluida la tabla de nombres originales) a la nueva ubicación y borra los datos antiguos al final. Los videos son grandes: puede tardar varios minutos y la nueva ubicación necesita suficiente espacio libre.\n• No mover: cambia solo la ubicación; los datos antiguos se quedan donde están.\n• Cancelar: no hace nada.</string>
+    <string name="storage_migration_migrate">Mover</string>
+    <string name="storage_migration_keep">No mover</string>
+    <string name="storage_migration_running">Moviendo la bóveda…</string>
+    <string name="storage_migration_running_hint">Los videos grandes pueden tardar varios minutos. Mantén la aplicación abierta.</string>
+    <string name="storage_migration_success">Bóveda movida correctamente</string>
+    <string name="storage_migration_failed">Error al mover. Los datos antiguos están intactos.</string>
+    <string name="storage_migration_target_exists">El destino ya tiene una carpeta de bóveda con contenido. No se puede mover.</string>
 </resources>

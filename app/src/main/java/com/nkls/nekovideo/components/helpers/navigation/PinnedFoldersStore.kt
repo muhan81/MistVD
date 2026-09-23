@@ -1,7 +1,6 @@
 package com.nkls.nekovideo.components.helpers
 
 import android.content.Context
-import android.os.Environment
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
@@ -113,7 +112,7 @@ object PinnedFoldersStore {
     }
 
     fun resolveSubtitle(path: String): String {
-        val rootPath = Environment.getExternalStorageDirectory().absolutePath
+        val rootPath = FolderNavigationState.ROOT_PATH
         val relative = path.removePrefix(rootPath).trimStart(File.separatorChar)
         return relative.ifBlank { path }
     }

@@ -82,6 +82,7 @@ import com.nkls.nekovideo.components.helpers.VideoProgressStore
 import com.nkls.nekovideo.components.helpers.PinnedFoldersStore
 import com.nkls.nekovideo.components.helpers.supportedVideoExtensions
 import com.nkls.nekovideo.components.helpers.VideoTagStore
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import com.nkls.nekovideo.services.FolderVideoScanner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -183,6 +184,47 @@ fun PermissionRequestScreen() {
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+    }
+}
+
+/**
+ * Mostrado quando o volume escolhido não está acessível agora — tipicamente um
+ * cartão de memória removido. Existe para NÃO exibir uma lista vazia: lista vazia
+ * faria o usuário acreditar que o conteúdo do cofre desapareceu.
+ */
+@Composable
+fun StorageUnavailableScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = stringResource(R.string.storage_unavailable_title),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.storage_unavailable_description),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1246,6 +1288,14 @@ fun FolderScreen(
 
     if (!hasPermission) {
         PermissionRequestScreen()
+        return
+    }
+
+    // Volume escolhido indisponível (tipicamente cartão de memória removido).
+    // Mostrar isso explicitamente em vez de uma lista vazia — lista vazia faria
+    // o usuário acreditar que o conteúdo do cofre desapareceu.
+    if (isRootLevel && !StorageRoot.isPathAvailable(folderPath)) {
+        StorageUnavailableScreen()
         return
     }
 

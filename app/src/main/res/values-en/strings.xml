@@ -516,4 +516,30 @@
     <string name="player_seek_backward">Seek backward</string>
     <string name="player_audio_track_number">Audio %1$d</string>
     <string name="player_track_number">Track %1$d</string>
+    <!-- Storage location (Settings → Storage) -->
+    <string name="storage_location_section">Storage location</string>
+    <string name="storage_location_title">Storage location</string>
+    <string name="storage_location_browse_section">Where to read videos from</string>
+    <string name="storage_location_vault_section">Where to store the private vault</string>
+    <string name="storage_location_follow_system">Follow the system (default)</string>
+    <string name="storage_location_removable">Memory card</string>
+    <string name="storage_location_internal">Internal storage</string>
+    <string name="storage_location_free_space">%1$s free of %2$s</string>
+    <string name="storage_location_current">Current</string>
+    <string name="storage_location_saved">Location updated</string>
+    <string name="storage_location_unavailable">This location is not available right now (the card may have been removed)</string>
+    <string name="storage_location_fat32_warning">This app does not support memory cards formatted as FAT32 — that format caps single files at 4 GB. If your card is FAT32, format it as exFAT before use.</string>
+    <string name="storage_unavailable_title">Storage location unavailable</string>
+    <string name="storage_unavailable_description">The selected volume cannot be accessed right now. If you use a memory card, make sure it is inserted. Your content is still saved — nothing was deleted.</string>
+    <string name="storage_vault_not_mounted">Memory card not mounted</string>
+    <!-- Phase 2: vault migration when switching volumes -->
+    <string name="storage_migration_title">Move the vault?</string>
+    <string name="storage_migration_message">The vault at the current location has content.\n\n• Move: copies the entire vault (including the original-names table) to the new location and deletes the old data at the end. Videos are large: it can take several minutes and the new location needs enough free space.\n• Don\'t move: changes only the location; the old data stays where it is.\n• Cancel: does nothing.</string>
+    <string name="storage_migration_migrate">Move</string>
+    <string name="storage_migration_keep">Don\'t move</string>
+    <string name="storage_migration_running">Moving the vault…</string>
+    <string name="storage_migration_running_hint">Large videos can take several minutes. Keep the app open.</string>
+    <string name="storage_migration_success">Vault moved successfully</string>
+    <string name="storage_migration_failed">Move failed. Your old data is untouched.</string>
+    <string name="storage_migration_target_exists">The destination already has a vault folder with content. Cannot move.</string>
 </resources>

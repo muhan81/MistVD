@@ -516,4 +516,30 @@
     <string name="player_seek_backward">Retroceder</string>
     <string name="player_audio_track_number">Áudio %1$d</string>
     <string name="player_track_number">Faixa %1$d</string>
+    <!-- Local de armazenamento (Configurações → Armazenamento) -->
+    <string name="storage_location_section">Local de armazenamento</string>
+    <string name="storage_location_title">Local de armazenamento</string>
+    <string name="storage_location_browse_section">Onde ler os vídeos</string>
+    <string name="storage_location_vault_section">Onde guardar o cofre</string>
+    <string name="storage_location_follow_system">Seguir o sistema (padrão)</string>
+    <string name="storage_location_removable">Cartão de memória</string>
+    <string name="storage_location_internal">Armazenamento interno</string>
+    <string name="storage_location_free_space">%1$s livres de %2$s</string>
+    <string name="storage_location_current">Atual</string>
+    <string name="storage_location_saved">Local atualizado</string>
+    <string name="storage_location_unavailable">Este local não está disponível agora (o cartão pode ter sido removido)</string>
+    <string name="storage_location_fat32_warning">Este app não oferece suporte a cartões de memória no formato FAT32 — nesse formato o limite é de 4 GB por arquivo. Se o seu cartão for FAT32, formate-o como exFAT antes de usar.</string>
+    <string name="storage_unavailable_title">Local de armazenamento indisponível</string>
+    <string name="storage_unavailable_description">O volume escolhido não está acessível agora. Se você usa um cartão de memória, verifique se ele está inserido. Seu conteúdo continua salvo — nada foi apagado.</string>
+    <string name="storage_vault_not_mounted">Cartão de memória não montado</string>
+    <!-- 2ª fase: migração do cofre ao trocar o volume -->
+    <string name="storage_migration_title">Mover o cofre?</string>
+    <string name="storage_migration_message">Há conteúdo no cofre na localização atual.\n\n• Mover: copia o cofre inteiro (incluindo a tabela de nomes originais) para o novo local e apaga os dados antigos no final. Vídeos são grandes: pode levar vários minutos e o novo local precisa de espaço livre suficiente.\n• Não mover: muda apenas a localização; os dados antigos ficam onde estão.\n• Cancelar: não faz nada.</string>
+    <string name="storage_migration_migrate">Mover</string>
+    <string name="storage_migration_keep">Não mover</string>
+    <string name="storage_migration_running">Movendo o cofre…</string>
+    <string name="storage_migration_running_hint">Vídeos grandes podem levar vários minutos. Mantenha o app aberto.</string>
+    <string name="storage_migration_success">Cofre movido com sucesso</string>
+    <string name="storage_migration_failed">Falha ao mover. Seus dados antigos estão intactos.</string>
+    <string name="storage_migration_target_exists">O local de destino já tem uma pasta de cofre com conteúdo. Não é possível mover.</string>
 </resources>

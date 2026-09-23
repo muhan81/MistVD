@@ -11,6 +11,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 import android.util.Base64
 import com.nkls.nekovideo.R
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import kotlin.coroutines.resume
 
 object FilesManager {
@@ -184,7 +185,8 @@ object FilesManager {
     }
 
     fun ensureUnlockedFolderExists(): Boolean {
-        val unlockedFolder = File("/storage/emulated/0/DCIM/Unlooked")
+        // Derivado do volume de listagem atual — antes era literal "/storage/emulated/0".
+        val unlockedFolder = File(File(StorageRoot.browseRoot, "DCIM"), "Unlooked")
         return try {
             if (!unlockedFolder.exists()) {
                 unlockedFolder.mkdirs()
@@ -655,8 +657,9 @@ object FilesManager {
             if (customPath != null) {
                 return customPath
             }
-            // Se não tiver, retorna o padrão
-            return File("/storage/emulated/0", SECURE_FOLDER_NAME).absolutePath
+            // Se não tiver, deriva do volume de listagem atual
+            // (antes era literal "/storage/emulated/0", que divergia da raiz da lista).
+            return File(StorageRoot.browseRoot, SECURE_FOLDER_NAME).absolutePath
         }
 
         fun getSecureVideosRecursively(context: Context, folderPath: String): List<String> {
@@ -690,11 +693,15 @@ object FilesManager {
             }
         }
 
-        // Nova pasta privada real — usa o sistema .nekovideo do app
-        private const val NEKO_PRIVATE_FOLDER_NAME = "NekoVideo"
+        // Nova pasta privada real — o caminho real vem de StorageRoot (volume escolhido).
 
+        /**
+         * Caminho do cofre. Não recebe Context de propósito: os ~14 pontos de chamada
+         * espalhados pelo app não têm Context à mão, e mudar a assinatura significaria
+         * tocar em todos eles. A raiz vem de [StorageRoot], inicializado no MainActivity.
+         */
         fun getNekoPrivateFolderPath(): String {
-            return File("/storage/emulated/0", NEKO_PRIVATE_FOLDER_NAME).absolutePath
+            return StorageRoot.vaultPath
         }
 
         fun ensureNekoPrivateFolderExists(): Boolean {
@@ -702,9 +709,19 @@ object FilesManager {
                 val nekoFolder = File(getNekoPrivateFolderPath())
                 if (!nekoFolder.exists()) {
                     nekoFolder.mkdirs()
-                    File(nekoFolder, ".nekovideo").createNewFile()
                 }
-                nekoFolder.exists() && nekoFolder.isDirectory
+                if (nekoFolder.exists() && nekoFolder.isDirectory) {
+                    // Marca .nekovideo SEMPRE que estiver faltando. Antes ela só era criada
+                    // junto com a pasta: se o marcador se perdesse (limpeza do sistema),
+                    // nunca mais era recriado — e a pasta ficava invisível no app.
+                    val marker = File(nekoFolder, ".nekovideo")
+                    if (!marker.exists()) {
+                        marker.createNewFile()
+                    }
+                    true
+                } else {
+                    false
+                }
             } catch (e: Exception) {
                 false
             }

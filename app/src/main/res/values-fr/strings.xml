@@ -504,4 +504,44 @@
     <string name="player_seek_backward">Retour rapide</string>
     <string name="player_audio_track_number">Audio %1$d</string>
     <string name="player_track_number">Piste %1$d</string>
+
+    <!-- Pastas fixadas (texto herdado do upstream, faltava neste idioma) -->
+    <string name="action_pin_folder">Épingler le dossier</string>
+    <string name="action_unpin_folder">Détacher le dossier</string>
+    <string name="pin_folder_already_pinned">Ce dossier est déjà épinglé</string>
+    <string name="pin_folder_invalid">Seuls les dossiers existants peuvent être épinglés</string>
+    <string name="pin_folder_limit_reached">Limite de dossiers épinglés atteinte</string>
+    <string name="pin_folder_success">Dossier épinglé</string>
+    <string name="pinned_folder_unavailable">Dossier introuvable</string>
+    <string name="pinned_folders_title">Dossiers épinglés</string>
+    <string name="unpin_folder_confirm_message">Retirer \"%1$s\" des dossiers épinglés ?</string>
+    <string name="unpin_folder_confirm_title">Détacher le dossier ?</string>
+    <string name="unpin_folder_success">Dossier détaché</string>
+
+    <!-- Local de armazenamento (funcionalidade nova) -->
+    <string name="storage_location_browse_section">Où lire les vidéos</string>
+    <string name="storage_location_current">Actuel</string>
+    <string name="storage_location_fat32_warning">Cette application ne prend pas en charge les cartes mémoire au format FAT32 — dans ce format, la taille d\'un fichier est limitée à 4 Go. Si votre carte est en FAT32, formatez-la en exFAT avant de l\'utiliser.</string>
+    <string name="storage_location_follow_system">Suivre le système (par défaut)</string>
+    <string name="storage_location_free_space">%1$s libres sur %2$s</string>
+    <string name="storage_location_internal">Stockage interne</string>
+    <string name="storage_location_removable">Carte mémoire</string>
+    <string name="storage_location_saved">Emplacement mis à jour</string>
+    <string name="storage_location_section">Emplacement de stockage</string>
+    <string name="storage_location_title">Emplacement de stockage</string>
+    <string name="storage_location_unavailable">Cet emplacement n\'est pas disponible pour le moment (la carte a peut-être été retirée)</string>
+    <string name="storage_location_vault_section">Où stocker le coffre privé</string>
+    <string name="storage_unavailable_description">Le volume sélectionné est inaccessible pour le moment. Si vous utilisez une carte mémoire, vérifiez qu\'elle est insérée. Votre contenu est toujours enregistré — rien n\'a été supprimé.</string>
+    <string name="storage_unavailable_title">Emplacement de stockage indisponible</string>
+    <string name="storage_vault_not_mounted">Carte mémoire non montée</string>
+    <!-- Phase 2 : migration du coffre lors du changement de volume -->
+    <string name="storage_migration_title">Déplacer le coffre ?</string>
+    <string name="storage_migration_message">Le coffre à l\'emplacement actuel contient des éléments.\n\n• Déplacer : copie tout le coffre (y compris la table des noms d\'origine) vers le nouvel emplacement et supprime les anciennes données à la fin. Les vidéos sont volumineuses : cela peut prendre plusieurs minutes et le nouvel emplacement doit disposer d\'un espace libre suffisant.\n• Ne pas déplacer : change uniquement l\'emplacement ; les anciennes données restent en place.\n• Annuler : ne change rien.</string>
+    <string name="storage_migration_migrate">Déplacer</string>
+    <string name="storage_migration_keep">Ne pas déplacer</string>
+    <string name="storage_migration_running">Déplacement du coffre…</string>
+    <string name="storage_migration_running_hint">Les vidéos volumineuses peuvent prendre plusieurs minutes. Gardez l\'application ouverte.</string>
+    <string name="storage_migration_success">Coffre déplacé avec succès</string>
+    <string name="storage_migration_failed">Échec du déplacement. Les anciennes données sont intactes.</string>
+    <string name="storage_migration_target_exists">La destination contient déjà un dossier de coffre avec du contenu. Déplacement impossible.</string>
 </resources>

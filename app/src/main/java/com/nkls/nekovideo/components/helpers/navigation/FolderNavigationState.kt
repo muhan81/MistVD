@@ -1,11 +1,11 @@
 package com.nkls.nekovideo.components.helpers
 
-import android.os.Environment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 
 /**
  * Estado de navegação de pastas usando pilha reativa.
@@ -16,7 +16,15 @@ class FolderNavigationState(
     private val folderStack: SnapshotStateList<String>
 ) {
     companion object {
-        val ROOT_PATH: String = Environment.getExternalStorageDirectory().absolutePath
+        /**
+         * Raiz de listagem. Passou a ler SEMPRE o valor atual de [StorageRoot],
+         * que pode ser trocado pelo usuário em Configurações → Armazenamento.
+         *
+         * Antes era um `val` calculado uma única vez no carregamento da classe —
+         * isso é que impedia a troca de volume em tempo de execução, e é a metade
+         * "lista" do bug em que a outra metade era o caminho literal do cofre.
+         */
+        val ROOT_PATH: String get() = StorageRoot.browseRoot
     }
 
     /** Caminho da pasta atual (topo da pilha) */

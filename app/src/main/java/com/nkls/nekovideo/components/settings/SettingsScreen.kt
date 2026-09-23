@@ -122,6 +122,7 @@ import com.nkls.nekovideo.components.helpers.ContinueWatchingStore
 import com.nkls.nekovideo.components.helpers.VideoProgressStore
 import com.nkls.nekovideo.components.helpers.VideoTagStore
 import com.nkls.nekovideo.services.FolderVideoScanner
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -739,7 +740,7 @@ private fun formatStorageUsage(bytes: Long): String? {
 
 
 @Composable
-fun StorageSettingsScreen() {
+fun StorageSettingsScreen(navController: androidx.navigation.NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var thumbnailCacheBytes by remember { mutableStateOf(0L) }
@@ -779,6 +780,20 @@ fun StorageSettingsScreen() {
                 .padding(if (isCompact) 8.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp)
         ) {
+            item {
+                SettingsSectionHeader(stringResource(R.string.storage_location_section), isCompact)
+            }
+
+            item {
+                SettingsClickableItem(
+                    icon = Icons.Default.Folder,
+                    title = stringResource(R.string.storage_location_title),
+                    subtitle = StorageRoot.browseRoot,
+                    onClick = { navController.navigate("settings/storage/location") },
+                    isCompact = isCompact
+                )
+            }
+
             item {
                 SettingsSectionHeader(stringResource(R.string.storage_thumbnails_section), isCompact)
             }

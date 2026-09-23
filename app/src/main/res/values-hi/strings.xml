@@ -504,4 +504,44 @@
     <string name="player_seek_backward">पीछे खोजें</string>
     <string name="player_audio_track_number">ऑडियो %1$d</string>
     <string name="player_track_number">ट्रैक %1$d</string>
+
+    <!-- Pastas fixadas (texto herdado do upstream, faltava neste idioma) -->
+    <string name="action_pin_folder">फ़ोल्डर पिन करें</string>
+    <string name="action_unpin_folder">फ़ोल्डर अनपिन करें</string>
+    <string name="pin_folder_already_pinned">यह फ़ोल्डर पहले से पिन है</string>
+    <string name="pin_folder_invalid">केवल मौजूद फ़ोल्डर ही पिन किए जा सकते हैं</string>
+    <string name="pin_folder_limit_reached">पिन किए गए फ़ोल्डर की सीमा पूरी हो गई</string>
+    <string name="pin_folder_success">फ़ोल्डर पिन हो गया</string>
+    <string name="pinned_folder_unavailable">फ़ोल्डर नहीं मिला</string>
+    <string name="pinned_folders_title">पिन किए गए फ़ोल्डर</string>
+    <string name="unpin_folder_confirm_message">\"%1$s\" को पिन किए गए फ़ोल्डर से हटाएँ?</string>
+    <string name="unpin_folder_confirm_title">फ़ोल्डर अनपिन करें?</string>
+    <string name="unpin_folder_success">फ़ोल्डर अनपिन हो गया</string>
+
+    <!-- Local de armazenamento (funcionalidade nova) -->
+    <string name="storage_location_browse_section">वीडियो कहाँ से पढ़ें</string>
+    <string name="storage_location_current">वर्तमान</string>
+    <string name="storage_location_fat32_warning">यह ऐप FAT32 फ़ॉर्मैट वाले मेमोरी कार्ड का समर्थन नहीं करता — उस फ़ॉर्मैट में एक फ़ाइल की सीमा 4 GB होती है। अगर आपका कार्ड FAT32 है, तो उपयोग से पहले उसे exFAT में फ़ॉर्मैट करें।</string>
+    <string name="storage_location_follow_system">सिस्टम के अनुसार (डिफ़ॉल्ट)</string>
+    <string name="storage_location_free_space">%1$s खाली, कुल %2$s</string>
+    <string name="storage_location_internal">आंतरिक संग्रह</string>
+    <string name="storage_location_removable">मेमोरी कार्ड</string>
+    <string name="storage_location_saved">स्थान अपडेट हो गया</string>
+    <string name="storage_location_section">संग्रहण स्थान</string>
+    <string name="storage_location_title">संग्रहण स्थान</string>
+    <string name="storage_location_unavailable">यह स्थान अभी उपलब्ध नहीं है (हो सकता है कि कार्ड निकाल दिया गया हो)</string>
+    <string name="storage_location_vault_section">निजी तिजोरी कहाँ रखें</string>
+    <string name="storage_unavailable_description">चुना गया वॉल्यूम अभी उपलब्ध नहीं है। अगर आप मेमोरी कार्ड का उपयोग करते हैं, तो जाँचें कि वह लगा हुआ है। आपकी सामग्री अभी भी सुरक्षित है — कुछ भी मिटाया नहीं गया है।</string>
+    <string name="storage_unavailable_title">संग्रहण स्थान उपलब्ध नहीं</string>
+    <string name="storage_vault_not_mounted">मेमोरी कार्ड माउंट नहीं है</string>
+    <!-- चरण 2: वॉल्यूम बदलने पर वॉल्ट माइग्रेशन -->
+    <string name="storage_migration_title">वॉल्ट दूसरी जगह ले जाएँ?</string>
+    <string name="storage_migration_message">मौजूदा जगह पर वॉल्ट में सामग्री है।\n\n• ले जाएँ: पूरे वॉल्ट (मूल नामों की सूची सहित) को नई जगह पर कॉपी करता है और अंत में पुराना डेटा हटा देता है। वीडियो बड़े होते हैं: इसमें कई मिनट लग सकते हैं और नई जगह पर पर्याप्त खाली जगह होनी चाहिए।\n• न ले जाएँ: केवल जगह बदलती है; पुराना डेटा वहीं रहता है।\n• रद्द करें: कुछ नहीं बदलता।</string>
+    <string name="storage_migration_migrate">ले जाएँ</string>
+    <string name="storage_migration_keep">न ले जाएँ</string>
+    <string name="storage_migration_running">वॉल्ट ले जाया जा रहा है…</string>
+    <string name="storage_migration_running_hint">बड़े वीडियो में कई मिनट लग सकते हैं। ऐप खुला रखें।</string>
+    <string name="storage_migration_success">वॉल्ट सफलतापूर्वक स्थानांतरित हुआ</string>
+    <string name="storage_migration_failed">स्थानांतरण विफल। पुराना डेटा सुरक्षित है।</string>
+    <string name="storage_migration_target_exists">गंतव्य पर सामग्री वाला वॉल्ट फ़ोल्डर पहले से मौजूद है। स्थानांतरित नहीं किया जा सकता।</string>
 </resources>

@@ -31,6 +31,11 @@
 -keep class com.nkls.nekovideo.components.helpers.LockedFolderRegistryEntry { *; }
 -keep class com.nkls.nekovideo.components.helpers.LockedFoldersRegistry { *; }
 
+# Pinned folders (Gson via PinnedFoldersStore) — faltava regra; sem ela o R8
+# renomeava a classe/campos (mapping: PinnedFolderEntry -> i1, path -> a) e um
+# upgrade de versão poderia perder os pins salvos.
+-keep class com.nkls.nekovideo.components.helpers.PinnedFolderEntry { *; }
+
 # ffmpeg-kit - lossless video cutting
 -keep class com.arthenica.ffmpegkit.** { *; }
 -dontwarn com.arthenica.ffmpegkit.**

@@ -121,6 +121,7 @@ import com.nkls.nekovideo.components.player.VideoPlayerOverlay
 import com.nkls.nekovideo.components.settings.AboutSettingsScreen
 import com.nkls.nekovideo.components.settings.ChangelogSettingsScreen
 import com.nkls.nekovideo.components.settings.StorageSettingsScreen
+import com.nkls.nekovideo.components.settings.StorageLocationScreen
 import com.nkls.nekovideo.components.settings.TagsSettingsScreen
 import com.nkls.nekovideo.components.settings.DisplaySettingsScreen
 import com.nkls.nekovideo.components.settings.InterfaceSettingsScreen
@@ -131,6 +132,7 @@ import com.nkls.nekovideo.findActivity
 import com.nkls.nekovideo.services.FolderVideoScanner
 import com.nkls.nekovideo.components.helpers.DLNACastManager
 import com.nkls.nekovideo.components.helpers.FolderNavigationState
+import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import com.nkls.nekovideo.theme.ThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -180,6 +182,20 @@ fun MainScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     val pinnedFolders by PinnedFoldersStore.entries.collectAsState()
+
+    // ✅ Troca de volume de armazenamento (Configurações → Armazenamento → Local de armazenamento).
+    // Ao escolher outro volume, a pilha de navegação ainda aponta para caminhos do volume
+    // antigo — é preciso voltar para a raiz nova e forçar um novo scan. Sem isso, a lista
+    // continuaria mostrando o volume anterior.
+    val currentBrowseRoot = StorageRoot.browseRoot
+    var appliedBrowseRoot by remember { mutableStateOf(currentBrowseRoot) }
+    LaunchedEffect(currentBrowseRoot) {
+        if (currentBrowseRoot != appliedBrowseRoot) {
+            appliedBrowseRoot = currentBrowseRoot
+            folderNavState.navigateToRoot()
+            FolderVideoScanner.startScan(context, forceRefresh = true)
+        }
+    }
 
     var showPlayerOverlay by remember { mutableStateOf(false) }
     var isExternalPlayerSession by rememberSaveable { mutableStateOf(false) }
@@ -1608,7 +1624,10 @@ fun MainScreen(
                     InterfaceSettingsScreen(themeManager)
                 }
                 composable("settings/storage") {
-                    StorageSettingsScreen()
+                    StorageSettingsScreen(navController)
+                }
+                composable("settings/storage/location") {
+                    StorageLocationScreen()
                 }
                 composable("settings/tags") {
                     TagsSettingsScreen()

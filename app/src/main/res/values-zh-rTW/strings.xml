@@ -501,4 +501,30 @@
     <string name="player_seek_backward">倒轉</string>
     <string name="player_audio_track_number">音訊 %1$d</string>
     <string name="player_track_number">軌道 %1$d</string>
+    <!-- 儲存位置（設定 → 儲存空間） -->
+    <string name="storage_location_section">儲存位置</string>
+    <string name="storage_location_title">選擇位置</string>
+    <string name="storage_location_browse_section">瀏覽位置（從哪裡讀取影片）</string>
+    <string name="storage_location_vault_section">加密庫位置（加密後的檔案存在哪裡）</string>
+    <string name="storage_location_follow_system">跟隨系統（預設）</string>
+    <string name="storage_location_removable">記憶卡</string>
+    <string name="storage_location_internal">內部儲存空間</string>
+    <string name="storage_location_free_space">剩餘 %1$s / 共 %2$s</string>
+    <string name="storage_location_current">目前</string>
+    <string name="storage_location_saved">位置已更新</string>
+    <string name="storage_location_unavailable">此位置目前無法使用（記憶卡可能已拔出）</string>
+    <string name="storage_location_fat32_warning">本應用程式不支援 FAT32 格式的記憶卡——該格式下單一檔案上限為 4 GB。若你的記憶卡是 FAT32，請先格式化為 exFAT 再使用。</string>
+    <string name="storage_unavailable_title">儲存位置無法使用</string>
+    <string name="storage_unavailable_description">所選的儲存卷目前無法存取。若你使用記憶卡，請確認已插好。庫裡的內容仍然存在，沒有任何東西被刪除。</string>
+    <string name="storage_vault_not_mounted">記憶卡未掛載</string>
+    <!-- 第二階段：切換儲存卷時的加密庫遷移 -->
+    <string name="storage_migration_title">遷移加密庫？</string>
+    <string name="storage_migration_message">目前加密庫位置有內容。\n\n• 搬過去：將整個加密庫（含原名對照表）複製到新位置，最後刪除舊資料。影片體積大，可能需要數分鐘，且新位置需要有足夠的剩餘空間。\n• 先不搬：只變更位置，舊資料留在原地。\n• 取消：不做任何變更。</string>
+    <string name="storage_migration_migrate">搬過去</string>
+    <string name="storage_migration_keep">先不搬</string>
+    <string name="storage_migration_running">正在遷移加密庫…</string>
+    <string name="storage_migration_running_hint">影片較大時可能需要數分鐘，請保持應用程式在前景執行。</string>
+    <string name="storage_migration_success">遷移完成</string>
+    <string name="storage_migration_failed">遷移失敗，舊資料未受影響。</string>
+    <string name="storage_migration_target_exists">目標位置已存在有內容的加密庫目錄，無法遷移。</string>
 </resources>

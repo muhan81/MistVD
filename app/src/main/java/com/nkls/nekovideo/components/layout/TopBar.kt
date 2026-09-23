@@ -59,6 +59,7 @@ import com.nkls.nekovideo.components.CastDisconnectDialog
 import com.nkls.nekovideo.components.helpers.DLNACastManager
 import com.nkls.nekovideo.components.helpers.FilesManager
 import com.nkls.nekovideo.components.helpers.FolderLockManager
+import com.nkls.nekovideo.components.helpers.FolderNavigationState
 import com.nkls.nekovideo.components.helpers.LockedPlaybackSession
 import com.nkls.nekovideo.components.helpers.PlaylistManager
 import com.nkls.nekovideo.components.player.DLNADevicePickerDialog
@@ -208,6 +209,13 @@ fun TopBar(
                         fontWeight = FontWeight.Medium
                     )
                 }
+                currentRoute == "settings/storage/location" -> {
+                    Text(
+                        text = stringResource(R.string.storage_location_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 currentRoute == "settings/tags" -> {
                     Text(
                         text = stringResource(R.string.tags_title),
@@ -275,7 +283,7 @@ fun TopBar(
                 }
                 currentRoute == "folder" -> {
                     // Breadcrumb interativo para navegação entre pastas
-                    val rootPath = android.os.Environment.getExternalStorageDirectory().absolutePath
+                    val rootPath = FolderNavigationState.ROOT_PATH
                     val relativePath = folderPath.removePrefix(rootPath).trim('/')
                     val pathSegments = relativePath.split('/').filter { it.isNotEmpty() }
 

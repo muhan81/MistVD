@@ -13,6 +13,7 @@
 /app/.transforms
 /app/.idea
 /local.properties
+/release-signing.properties
 /.claude
 /.idea/caches
 /.idea/libraries
