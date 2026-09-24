@@ -9,7 +9,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,13 +19,10 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,10 +30,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.roundToInt
 import com.nkls.nekovideo.R
 import com.nkls.nekovideo.components.helpers.FilesManager
 
@@ -74,16 +68,6 @@ fun ActionFAB(
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
-    val screenWidthPx = remember(configuration.screenWidthDp, density) {
-        with(density) { configuration.screenWidthDp.dp.toPx() }
-    }
-    var dragOffsetX by rememberSaveable { mutableFloatStateOf(0f) }
-    var fabGroupWidthPx by remember { mutableIntStateOf(0) }
-    val maxHorizontalDragPx = remember(screenWidthPx, fabGroupWidthPx) {
-        (screenWidthPx / 2f - fabGroupWidthPx).coerceAtLeast(0f)
-    }
 
     val pasteHereText = stringResource(R.string.action_paste_here)
     val cancelText = stringResource(R.string.action_cancel)
@@ -274,20 +258,9 @@ fun ActionFAB(
             }
         }
     }
-    Box(
-        modifier = Modifier
-            .onSizeChanged { fabGroupWidthPx = it.width }
-            .offset { IntOffset(dragOffsetX.roundToInt(), 0) }
-            .pointerInput(maxHorizontalDragPx) {
-                detectDragGestures(
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        dragOffsetX = (dragOffsetX + dragAmount.x).coerceIn(-maxHorizontalDragPx, 0f)
-                    }
-                )
-            },
-        contentAlignment = Alignment.CenterEnd
-    ) {
+    // 拖动已上移到 FloatingActionDock 统一处理（原因见 AGENTS.md §六.12）：
+    // 挂在 Scaffold 槽位里的 FAB 一旦被拖出槽位边界，松手后就点不动了。
+    Box(contentAlignment = Alignment.CenterEnd) {
         // NOVO: Layout para modo Move - FAB duplo
         if (isMoveMode) {
             Column(

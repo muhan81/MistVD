@@ -648,6 +648,7 @@ fun DisplaySettingsScreen() {
 
     var showDurations by remember { mutableStateOf(prefs.getBoolean("show_durations", true)) }
     var showFileSizes by remember { mutableStateOf(prefs.getBoolean("show_file_sizes", false)) }
+    var showFolderSizes by remember { mutableStateOf(prefs.getBoolean("show_folder_sizes", false)) }
     val displaySettingsItems = listOf(
         DisplaySettingItem.Section(R.string.display_video_info),
         DisplaySettingItem.Switch(
@@ -668,6 +669,16 @@ fun DisplaySettingsScreen() {
             onCheckedChange = {
                 showFileSizes = it
                 prefs.edit { putBoolean("show_file_sizes", it) }
+            }
+        ),
+        DisplaySettingItem.Switch(
+            icon = Icons.Default.Folder,
+            titleRes = R.string.display_show_folder_sizes,
+            subtitleRes = R.string.display_show_folder_sizes_desc,
+            checked = showFolderSizes,
+            onCheckedChange = {
+                showFolderSizes = it
+                prefs.edit { putBoolean("show_folder_sizes", it) }
             }
         )
     )

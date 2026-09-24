@@ -38,6 +38,10 @@
     <string name="empty_folder_title">Leerer Ordner</string>
     <string name="empty_folder_message">Derzeit sind hier keine sichtbaren Ordner oder Videos vorhanden.</string>
     <string name="neko_private_folder_name">Privater Tresor</string>
+    <string name="vault_fab_locked">Privaten Tresor öffnen</string>
+    <string name="vault_fab_unlocked">Privaten Tresor ausblenden</string>
+    <string name="display_show_folder_sizes">Ordnergrößen anzeigen</string>
+    <string name="display_show_folder_sizes_desc">Gesamtgröße aller Inhalte in jedem Ordner anzeigen</string>
     <string name="secure_folders_hidden">Sichere Ordner ausgeblendet</string>
     <string name="secure_folders_shown">Sichere Ordner angezeigt</string>
     <string name="select_private_folders_to_unprivatize">Wählen Sie private Ordner zum Entprivatisieren aus</string>

@@ -38,6 +38,10 @@
     <string name="empty_folder_title">Dossier vide</string>
     <string name="empty_folder_message">Aucun dossier ni aucune vidéo visible ici pour le moment.</string>
     <string name="neko_private_folder_name">Coffre Privé</string>
+    <string name="vault_fab_locked">Ouvrir le coffre privé</string>
+    <string name="vault_fab_unlocked">Masquer le coffre privé</string>
+    <string name="display_show_folder_sizes">Afficher la taille des dossiers</string>
+    <string name="display_show_folder_sizes_desc">Afficher la taille totale du contenu de chaque dossier</string>
     <string name="secure_folders_hidden">Dossiers sécurisés masqués</string>
     <string name="secure_folders_shown">Dossiers sécurisés affichés</string>
     <string name="select_private_folders_to_unprivatize">Sélectionner des dossiers privés à déprivatiser</string>

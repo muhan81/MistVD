@@ -49,6 +49,10 @@
     <string name="empty_folder_title">Empty folder</string>
     <string name="empty_folder_message">There are no visible folders or videos here right now.</string>
     <string name="neko_private_folder_name">Private Vault</string>
+    <string name="vault_fab_locked">Open private vault</string>
+    <string name="vault_fab_unlocked">Hide private vault</string>
+    <string name="display_show_folder_sizes">Show folder sizes</string>
+    <string name="display_show_folder_sizes_desc">Show the total size of everything inside each folder</string>
     <string name="secure_folders_hidden">Secure folders hidden</string>
     <string name="secure_folders_shown">Secure folders displayed</string>
     <string name="select_private_folders_to_unprivatize">Select private folders to unprivatize</string>

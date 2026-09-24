@@ -38,6 +38,10 @@
     <string name="empty_folder_title">Папка пуста</string>
     <string name="empty_folder_message">Сейчас здесь нет видимых папок или видео.</string>
     <string name="neko_private_folder_name">Личное Хранилище</string>
+    <string name="vault_fab_locked">Открыть личное хранилище</string>
+    <string name="vault_fab_unlocked">Скрыть личное хранилище</string>
+    <string name="display_show_folder_sizes">Показывать размер папок</string>
+    <string name="display_show_folder_sizes_desc">Показывать общий размер всего содержимого каждой папки</string>
     <string name="secure_folders_hidden">Защищённые папки скрыты</string>
     <string name="secure_folders_shown">Защищённые папки отображены</string>
     <string name="select_private_folders_to_unprivatize">Выберите приватные папки для отмены приватности</string>

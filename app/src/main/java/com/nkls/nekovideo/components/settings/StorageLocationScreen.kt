@@ -46,7 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.Locale
 
 /**
  * Configurações → Armazenamento → Local de armazenamento.
@@ -376,18 +375,9 @@ private fun volumeSubtitle(volume: StorageRoot.VolumeInfo): String {
     return if (space.isBlank()) volume.path else "${volume.label}\n${volume.path}\n$space"
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0L) return "—"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var value = bytes.toDouble()
-    var index = 0
-    while (value >= 1024.0 && index < units.size - 1) {
-        value /= 1024.0
-        index++
-    }
-    val pattern = if (index >= 3) "%.1f %s" else "%.0f %s"
-    return String.format(Locale.US, pattern, value, units[index])
-}
+/** 未挂载/未知容量显示 `—`，其余统一走公共实现 */
+private fun formatBytes(bytes: Long): String =
+    if (bytes <= 0L) "—" else com.nkls.nekovideo.components.helpers.formatFileSize(bytes)
 
 @Composable
 private fun SettingsSectionHeader(title: String, isCompact: Boolean) {

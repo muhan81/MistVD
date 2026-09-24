@@ -16,7 +16,6 @@ import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
-import java.text.DecimalFormat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -712,16 +711,8 @@ object OptimizedThumbnailManager {
         return try {
             val file = File(videoPath)
             if (!file.exists()) return null
-
-            val bytes = file.length()
-            val df = DecimalFormat("#.##")
-
-            when {
-                bytes < 1024 -> "${bytes}B"
-                bytes < 1024 * 1024 -> "${df.format(bytes / 1024.0)}KB"
-                bytes < 1024 * 1024 * 1024 -> "${df.format(bytes / (1024.0 * 1024.0))}MB"
-                else -> "${df.format(bytes / (1024.0 * 1024.0 * 1024.0))}GB"
-            }
+            // 统一走公共实现（helpers/FileSizeFormatter.kt），单位前带空格
+            com.nkls.nekovideo.components.helpers.formatFileSize(file.length())
         } catch (e: Exception) {
             null
         }

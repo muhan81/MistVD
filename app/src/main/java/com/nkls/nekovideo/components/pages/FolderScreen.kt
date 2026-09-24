@@ -76,6 +76,8 @@ import com.nkls.nekovideo.components.helpers.ContinueWatchingEntry
 import com.nkls.nekovideo.components.helpers.ContinueWatchingStore
 import com.nkls.nekovideo.components.helpers.FilesManager
 import com.nkls.nekovideo.components.helpers.FolderLockManager
+import com.nkls.nekovideo.components.helpers.FolderSizeCalculator
+import com.nkls.nekovideo.components.helpers.formatFileSize
 import com.nkls.nekovideo.components.helpers.LockedPlaybackSession
 import com.nkls.nekovideo.components.helpers.VideoProgressEntry
 import com.nkls.nekovideo.components.helpers.VideoProgressStore
@@ -1191,12 +1193,14 @@ fun FolderScreen(
     val displayPrefs = remember { context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE) }
     var showDurations by remember { mutableStateOf(displayPrefs.getBoolean("show_durations", true)) }
     var showFileSizes by remember { mutableStateOf(displayPrefs.getBoolean("show_file_sizes", false)) }
+    var showFolderSizes by remember { mutableStateOf(displayPrefs.getBoolean("show_folder_sizes", false)) }
 
     DisposableEffect(displayPrefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
                 "show_durations" -> showDurations = displayPrefs.getBoolean(key, true)
                 "show_file_sizes" -> showFileSizes = displayPrefs.getBoolean(key, false)
+                "show_folder_sizes" -> showFolderSizes = displayPrefs.getBoolean(key, false)
             }
         }
         displayPrefs.registerOnSharedPreferenceChangeListener(listener)
@@ -1648,6 +1652,7 @@ fun FolderScreen(
                                                 showThumbnails = true,
                                                 showDurations = showDurations,
                                                 showFileSizes = showFileSizes,
+                                                showFolderSizes = showFolderSizes,
                                                 isSecureMode = isSecureMode,
                                                 isMoveMode = isMoveMode,
                                                 itemsToMove = itemsToMove,
@@ -1716,6 +1721,7 @@ private fun MediaRow(
     showThumbnails: Boolean,
     showDurations: Boolean,
     showFileSizes: Boolean,
+    showFolderSizes: Boolean,
     isSecureMode: Boolean,
     isMoveMode: Boolean,
     itemsToMove: List<String>,
@@ -1743,6 +1749,7 @@ private fun MediaRow(
                 showThumbnails = showThumbnails,
                 showDurations = showDurations,
                 showFileSizes = showFileSizes,
+                showFolderSizes = showFolderSizes,
                 gridColumns = gridColumns,
                 isSecureMode = isSecureMode,
                 progressEntry = progressByPath[item.path],
@@ -1895,6 +1902,7 @@ private fun MediaCard(
     showThumbnails: Boolean,
     showDurations: Boolean,
     showFileSizes: Boolean,
+    showFolderSizes: Boolean,
     gridColumns: Int,
     isSecureMode: Boolean,
     progressEntry: VideoProgressEntry?,
@@ -2092,7 +2100,7 @@ private fun MediaCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (item.isFolder) {
-                FolderContent(item)
+                FolderContent(item, showFolderSizes)
             } else {
                 VideoContent(
                     item = item,
@@ -2128,9 +2136,23 @@ private fun MediaCard(
 
 // SIMPLIFICADO - Conteúdo da pasta
 @Composable
-private fun FolderContent(item: MediaItem) {
+private fun FolderContent(item: MediaItem, showFolderSizes: Boolean = false) {
     val isSecure = item.name.startsWith(".") || item.isInsidePrivateFolder
     val isLocked = FolderLockManager.isLocked(item.path)
+
+    // 递归统计文件夹内全部内容的总大小：仅在开关打开时计算，后台线程 + 短期缓存，
+    // 首次可能先不显示、算完后回填（见 FolderSizeCalculator 的深度/条目双上限）。
+    var folderSizeText by remember(item.path, showFolderSizes) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item.path, showFolderSizes) {
+        folderSizeText = if (showFolderSizes) {
+            withContext(Dispatchers.IO) {
+                val bytes = FolderSizeCalculator.getFolderSize(item.path)
+                if (bytes > 0L) formatFileSize(bytes) else null
+            }
+        } else {
+            null
+        }
+    }
     val pinnedSubtitle = remember(item.path, item.showPinnedPathHint) {
         if (item.showPinnedPathHint) PinnedFoldersStore.resolveSubtitle(item.path) else null
     }
@@ -2218,7 +2240,7 @@ private fun FolderContent(item: MediaItem) {
                     .basicMarquee(iterations = Int.MAX_VALUE)
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             )
-        } else if (item.videoCount > 0 || item.subfolderCount > 0) {
+        } else if (item.videoCount > 0 || item.subfolderCount > 0 || folderSizeText != null) {
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
@@ -2257,6 +2279,22 @@ private fun FolderContent(item: MediaItem) {
                     Spacer(Modifier.width(2.dp))
                     Text(
                         "${item.subfolderCount}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+                folderSizeText?.let { sizeText ->
+                    if (item.videoCount > 0 || item.subfolderCount > 0) {
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            "·",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                        Spacer(Modifier.width(5.dp))
+                    }
+                    Text(
+                        sizeText,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )

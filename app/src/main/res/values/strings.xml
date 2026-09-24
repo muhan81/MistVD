@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">NekoVideo</string>
+    <string name="app_name" translatable="false">MistVD</string>
 
     <!-- Ações dos botões -->
     <string name="action_paste_here">Colar Aqui</string>
@@ -50,6 +50,10 @@
     <string name="empty_folder_title">Pasta vazia</string>
     <string name="empty_folder_message">Nao ha pastas ou videos visiveis aqui no momento.</string>
     <string name="neko_private_folder_name">Cofre Privado</string>
+    <string name="vault_fab_locked">Abrir cofre privado</string>
+    <string name="vault_fab_unlocked">Ocultar cofre privado</string>
+    <string name="display_show_folder_sizes">Mostrar tamanho das pastas</string>
+    <string name="display_show_folder_sizes_desc">Calcula o tamanho total de tudo dentro de cada pasta</string>
     <string name="secure_folders_hidden">Pastas seguras ocultadas</string>
     <string name="secure_folders_shown">Pastas seguras exibidas</string>
     <string name="select_private_folders_to_unprivatize">Selecione pastas privadas para desprivar</string>

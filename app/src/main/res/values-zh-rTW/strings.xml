@@ -49,6 +49,10 @@
     <string name="empty_folder_title">空資料夾</string>
     <string name="empty_folder_message">目前沒有可顯示的資料夾或影片。</string>
     <string name="neko_private_folder_name">私密保險庫</string>
+    <string name="vault_fab_locked">開啟私密保險庫</string>
+    <string name="vault_fab_unlocked">隱藏私密保險庫</string>
+    <string name="display_show_folder_sizes">顯示資料夾大小</string>
+    <string name="display_show_folder_sizes_desc">顯示每個資料夾內全部內容的總大小</string>
     <string name="secure_folders_hidden">已隱藏安全資料夾</string>
     <string name="secure_folders_shown">已顯示安全資料夾</string>
     <string name="select_private_folders_to_unprivatize">選擇要取消私密的資料夾</string>

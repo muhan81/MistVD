@@ -38,6 +38,10 @@
     <string name="empty_folder_title">फोल्डर खाली है</string>
     <string name="empty_folder_message">अभी यहां कोई दिखने वाली फोल्डर या वीडियो नहीं है।</string>
     <string name="neko_private_folder_name">निजी तिजोरी</string>
+    <string name="vault_fab_locked">निजी तिजोरी खोलें</string>
+    <string name="vault_fab_unlocked">निजी तिजोरी छिपाएँ</string>
+    <string name="display_show_folder_sizes">फ़ोल्डर का आकार दिखाएँ</string>
+    <string name="display_show_folder_sizes_desc">प्रत्येक फ़ोल्डर की पूरी सामग्री का आकार दिखाएँ</string>
     <string name="secure_folders_hidden">सुरक्षित फ़ोल्डर छुपाए गए</string>
     <string name="secure_folders_shown">सुरक्षित फ़ोल्डर प्रदर्शित</string>
     <string name="select_private_folders_to_unprivatize">अनप्राइवेटाइज़ करने के लिए प्राइवेट फ़ोल्डर चुनें</string>

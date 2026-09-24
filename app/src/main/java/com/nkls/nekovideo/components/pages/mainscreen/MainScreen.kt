@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -114,6 +115,7 @@ import com.nkls.nekovideo.components.helpers.VideoTagStore
 import com.nkls.nekovideo.components.helpers.rememberFolderNavigationState
 import com.nkls.nekovideo.components.layout.ActionFAB
 import com.nkls.nekovideo.components.layout.ActionType
+import com.nkls.nekovideo.components.layout.FloatingActionDock
 import com.nkls.nekovideo.components.layout.TopBar
 import com.nkls.nekovideo.components.loadFolderContent
 import com.nkls.nekovideo.components.player.MiniPlayerImproved
@@ -549,6 +551,19 @@ fun MainScreen(
         val newState = FilesManager.SecureFoldersVisibility.toggleSecureFoldersVisibility(context)
         showPrivateFolders = newState
         renameTrigger++
+    }
+
+    /**
+     * 保险库入口的统一语义 —— 左上角连点 3 次与右下角的锁形悬浮窗共用：
+     * 未显示 → 弹密码框；**已显示 → 直接隐藏、不再弹密码**，并提示。
+     */
+    fun requestVaultToggle() {
+        if (showPrivateFolders) {
+            togglePrivateFolders()
+            SortRowMessageCenter.showInfo(context.getString(R.string.secure_folders_hidden))
+        } else {
+            showPasswordDialog = true
+        }
     }
 
 
@@ -1227,6 +1242,10 @@ fun MainScreen(
         )
     }
 
+    // 悬浮窗覆盖层容器：FAB 必须挂在 Scaffold **之外**、覆盖整屏的 Box 里，
+    // 否则被拖出 floatingActionButton 槽位边界后就点不动了（见 AGENTS.md §六.12）。
+    // 这里只是前后各加一行，Scaffold 内部缩进一字未动。
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             if (currentRoute != "video_player" && !showPlayerOverlay) {
@@ -1237,14 +1256,7 @@ fun MainScreen(
                         selectedItems = selectedItems.toList(),
                         folderPath = folderPath,
                         navController = navController,
-                        onPasswordDialog = {
-                            if (showPrivateFolders) {
-                                togglePrivateFolders()
-                                SortRowMessageCenter.showInfo(context.getString(R.string.secure_folders_hidden))
-                            } else {
-                                showPasswordDialog = true
-                            }
-                        },
+                        onPasswordDialog = { requestVaultToggle() },
                         onSelectionClear = {
                             selectedItems.clear()
                             showFabMenu = false
@@ -1275,9 +1287,234 @@ fun MainScreen(
                 }
             }
         },
-        floatingActionButton = {
+        bottomBar = {
             if (currentRoute != "video_player" && currentRoute?.startsWith("settings") != true && !showPlayerOverlay) {
-                Box(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))) {
+                MiniPlayerImproved(
+                    onOpenPlayer = { openPlayerOverlay() },
+                    modifier = Modifier.navigationBarsPadding()
+                )
+            }
+        },
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = "folder",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 3 },
+                        animationSpec = tween(250)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { -it / 3 },
+                        animationSpec = tween(250)
+                    ) + fadeOut(animationSpec = tween(150))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 3 },
+                        animationSpec = tween(250)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 3 },
+                        animationSpec = tween(250)
+                    ) + fadeOut(animationSpec = tween(150))
+                }
+            ) {
+                // Rota única para pastas - navegação gerenciada por FolderNavigationState
+                composable("folder") {
+                    val isSecure = isSecureFolder(folderPath)
+
+                    FolderScreen(
+                        folderPath = folderPath,
+                        isSecureMode = isSecure,
+                        isRootLevel = isAtRootLevel,
+                        showPrivateFolders = showPrivateFolders,
+                        isPlayerOverlayVisible = showPlayerOverlay,
+                        isMoveMode = isMoveMode,
+                        itemsToMove = itemsToMove,
+                        onContinueWatchingClick = { entry ->
+                            selectedExternalSubtitleUri = entry.externalSubtitleUri?.let(Uri::parse)
+                            selectedExternalSubtitleName = entry.externalSubtitleName
+                            openVideoFromFolder(
+                                targetFolderPath = entry.folderPath,
+                                itemPath = entry.videoPath,
+                                resumePositionMs = entry.positionMs
+                            )
+                        },
+                        onFolderClick = { itemPath, currentSortType, isFolder ->
+                            if (isFolder) {
+                                if (FolderLockManager.isLocked(itemPath)) {
+                                    val pwd = sessionPassword ?: LockedPlaybackSession.sessionPassword
+                                    if (pwd != null) {
+                                        coroutineScope.launch {
+                                            val manifest = withContext(Dispatchers.IO) {
+                                                FolderLockManager.readManifest(itemPath, pwd)
+                                            }
+                                            if (manifest != null) {
+                                                val salt = withContext(Dispatchers.IO) {
+                                                    FolderLockManager.getSalt(itemPath)
+                                                }
+                                                if (salt != null) {
+                                                    val xorKey = withContext(Dispatchers.IO) {
+                                                        FolderLockManager.deriveXorKey(pwd, salt)
+                                                    }
+                                                    LockedPlaybackSession.start(xorKey, manifest, itemPath, pwd)
+                                                    folderNavState.navigateTo(itemPath)
+                                                }
+                                            } else {
+                                                SortRowMessageCenter.showError(context.getString(R.string.invalid_password_or_corrupted))
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    folderNavState.navigateTo(itemPath)
+                                }
+                            } else {
+                                openVideoFromFolder(folderPath, itemPath, currentSortType)
+                            }
+                        },
+                        selectedItems = selectedItems,
+                        onSelectionChange = { newSelection ->
+                            selectedItems.clear()
+                            selectedItems.addAll(newSelection)
+                            showFabMenu = false
+                            showRenameDialog = false
+                        },
+                        onVisibleItemsChange = { visibleFolderItems = it },
+                        renameTrigger = renameTrigger,
+                        deletedVideoPath = deletedVideoPath
+                    )
+                }
+
+                composable("settings") {
+                    SettingsScreen(navController)
+                }
+                composable("settings/playback") {
+                    PlaybackSettingsScreen()
+                }
+                composable("settings/interface") {
+                    // MODIFICADO: Passar themeManager para InterfaceSettingsScreen
+                    InterfaceSettingsScreen(themeManager)
+                }
+                composable("settings/storage") {
+                    StorageSettingsScreen(navController)
+                }
+                composable("settings/storage/location") {
+                    StorageLocationScreen()
+                }
+                composable("settings/tags") {
+                    TagsSettingsScreen()
+                }
+                composable("settings/about") {
+                    AboutSettingsScreen()
+                }
+                composable("settings/changelog") {
+                    ChangelogSettingsScreen()
+                }
+                composable("settings/display") {
+                    DisplaySettingsScreen()
+                }
+                composable("settings/security") {
+                    SecuritySettingsScreen()
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // BackHandlers DEPOIS do NavHost para ter prioridade (ordem LIFO)
+        // O último BackHandler registrado é o primeiro a ser verificado
+        // ═══════════════════════════════════════════════════════════════════
+
+        // BackHandler para navegação de pastas (volta para pasta anterior)
+        BackHandler(enabled = !showPlayerOverlay && !isAtRootLevel && currentRoute == "folder") {
+            Log.d("BackDebug", "🔙 BACK PRESSED - Handler: FOLDER NAVIGATION")
+            Log.d("BackDebug", "   Ação: Voltando para pasta anterior")
+            // Limpa seleção ao voltar
+            if (selectedItems.isNotEmpty()) {
+                selectedItems.clear()
+            }
+            // When navigating back from a locked subfolder, update currentFolderPath to parent
+            val parentFolder = File(folderPath).parent
+            if (parentFolder != null && FolderLockManager.isLocked(folderPath) &&
+                LockedPlaybackSession.hasSessionForFolder(folderPath)) {
+                if (LockedPlaybackSession.hasSessionForFolder(parentFolder)) {
+                    LockedPlaybackSession.setCurrentFolder(parentFolder)
+                }
+            }
+            folderNavState.navigateBack()
+        }
+
+        // BackHandler para ignorar voltar na root (não fecha o app)
+        BackHandler(enabled = !showPlayerOverlay && isAtRootLevel && currentRoute == "folder") {
+            val now = System.currentTimeMillis()
+            if (now - lastRootBackPressTime <= 2500L) {
+                hostActivity.moveTaskToBack(true)
+            } else {
+                lastRootBackPressTime = now
+                SortRowMessageCenter.showInfo(context.getString(R.string.press_back_again_to_exit), durationMs = 2500L)
+            }
+        }
+
+        // BackHandler para o overlay - PRIORIDADE MÁXIMA (registrado por último)
+        BackHandler(enabled = showPlayerOverlay) {
+            Log.d("BackDebug", "🔙 BACK PRESSED - Handler: OVERLAY (após NavHost)")
+            Log.d("BackDebug", "   Ação: Fechando overlay")
+            closePlayerOverlay()
+        }
+
+        VideoPlayerOverlay(
+            isVisible = showPlayerOverlay,
+            canControlRotation = showPlayerOverlay,
+            onDismiss = { closePlayerOverlay() },
+            onManageTags = {
+                showPlayerOverlay = false
+                isInPiPMode = false
+                navController.navigate("settings/tags")
+            },
+            onVideoDeleted = { deletedPath ->
+                deletedVideoPath = deletedPath
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(100)
+                    deletedVideoPath = null
+                }
+            },
+            selectedExternalSubtitleUri = selectedExternalSubtitleUri,
+            selectedExternalSubtitleName = selectedExternalSubtitleName,
+            onExternalSubtitleCleared = {
+                selectedExternalSubtitleUri = null
+                selectedExternalSubtitleName = null
+            },
+            onExternalSubtitleClick = {
+                subtitleFilePicker?.launch(
+                    arrayOf(
+                        "application/x-subrip",
+                        "text/vtt",
+                        "text/plain",
+                        "application/octet-stream"
+                    )
+                )
+            }
+        )
+
+    }
+            if (currentRoute != "video_player" && currentRoute?.startsWith("settings") != true && !showPlayerOverlay) {
+        // 悬浮窗覆盖层：整屏容器，FAB 拖到任意位置后仍可交互（AGENTS.md 六.12）
+            FloatingActionDock(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.systemBars),
+                isVaultUnlocked = showPrivateFolders,
+                onVaultClick = { requestVaultToggle() },
+                settingsFab = {
                 ActionFAB(
                     hasSelectedItems = selectedItems.isNotEmpty(),
                     isMoveMode = isMoveMode,
@@ -1502,226 +1739,9 @@ fun MainScreen(
                         }
                     }
                 )
-                } // Box navigationBarsPadding
+                }
+            )
             }
-        },
-        bottomBar = {
-            if (currentRoute != "video_player" && currentRoute?.startsWith("settings") != true && !showPlayerOverlay) {
-                MiniPlayerImproved(
-                    onOpenPlayer = { openPlayerOverlay() },
-                    modifier = Modifier.navigationBarsPadding()
-                )
-            }
-        },
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = "folder",
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it / 3 },
-                        animationSpec = tween(250)
-                    ) + fadeIn(animationSpec = tween(200))
-                },
-                exitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { -it / 3 },
-                        animationSpec = tween(250)
-                    ) + fadeOut(animationSpec = tween(150))
-                },
-                popEnterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { -it / 3 },
-                        animationSpec = tween(250)
-                    ) + fadeIn(animationSpec = tween(200))
-                },
-                popExitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it / 3 },
-                        animationSpec = tween(250)
-                    ) + fadeOut(animationSpec = tween(150))
-                }
-            ) {
-                // Rota única para pastas - navegação gerenciada por FolderNavigationState
-                composable("folder") {
-                    val isSecure = isSecureFolder(folderPath)
-
-                    FolderScreen(
-                        folderPath = folderPath,
-                        isSecureMode = isSecure,
-                        isRootLevel = isAtRootLevel,
-                        showPrivateFolders = showPrivateFolders,
-                        isPlayerOverlayVisible = showPlayerOverlay,
-                        isMoveMode = isMoveMode,
-                        itemsToMove = itemsToMove,
-                        onContinueWatchingClick = { entry ->
-                            selectedExternalSubtitleUri = entry.externalSubtitleUri?.let(Uri::parse)
-                            selectedExternalSubtitleName = entry.externalSubtitleName
-                            openVideoFromFolder(
-                                targetFolderPath = entry.folderPath,
-                                itemPath = entry.videoPath,
-                                resumePositionMs = entry.positionMs
-                            )
-                        },
-                        onFolderClick = { itemPath, currentSortType, isFolder ->
-                            if (isFolder) {
-                                if (FolderLockManager.isLocked(itemPath)) {
-                                    val pwd = sessionPassword ?: LockedPlaybackSession.sessionPassword
-                                    if (pwd != null) {
-                                        coroutineScope.launch {
-                                            val manifest = withContext(Dispatchers.IO) {
-                                                FolderLockManager.readManifest(itemPath, pwd)
-                                            }
-                                            if (manifest != null) {
-                                                val salt = withContext(Dispatchers.IO) {
-                                                    FolderLockManager.getSalt(itemPath)
-                                                }
-                                                if (salt != null) {
-                                                    val xorKey = withContext(Dispatchers.IO) {
-                                                        FolderLockManager.deriveXorKey(pwd, salt)
-                                                    }
-                                                    LockedPlaybackSession.start(xorKey, manifest, itemPath, pwd)
-                                                    folderNavState.navigateTo(itemPath)
-                                                }
-                                            } else {
-                                                SortRowMessageCenter.showError(context.getString(R.string.invalid_password_or_corrupted))
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    folderNavState.navigateTo(itemPath)
-                                }
-                            } else {
-                                openVideoFromFolder(folderPath, itemPath, currentSortType)
-                            }
-                        },
-                        selectedItems = selectedItems,
-                        onSelectionChange = { newSelection ->
-                            selectedItems.clear()
-                            selectedItems.addAll(newSelection)
-                            showFabMenu = false
-                            showRenameDialog = false
-                        },
-                        onVisibleItemsChange = { visibleFolderItems = it },
-                        renameTrigger = renameTrigger,
-                        deletedVideoPath = deletedVideoPath
-                    )
-                }
-
-                composable("settings") {
-                    SettingsScreen(navController)
-                }
-                composable("settings/playback") {
-                    PlaybackSettingsScreen()
-                }
-                composable("settings/interface") {
-                    // MODIFICADO: Passar themeManager para InterfaceSettingsScreen
-                    InterfaceSettingsScreen(themeManager)
-                }
-                composable("settings/storage") {
-                    StorageSettingsScreen(navController)
-                }
-                composable("settings/storage/location") {
-                    StorageLocationScreen()
-                }
-                composable("settings/tags") {
-                    TagsSettingsScreen()
-                }
-                composable("settings/about") {
-                    AboutSettingsScreen()
-                }
-                composable("settings/changelog") {
-                    ChangelogSettingsScreen()
-                }
-                composable("settings/display") {
-                    DisplaySettingsScreen()
-                }
-                composable("settings/security") {
-                    SecuritySettingsScreen()
-                }
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // BackHandlers DEPOIS do NavHost para ter prioridade (ordem LIFO)
-        // O último BackHandler registrado é o primeiro a ser verificado
-        // ═══════════════════════════════════════════════════════════════════
-
-        // BackHandler para navegação de pastas (volta para pasta anterior)
-        BackHandler(enabled = !showPlayerOverlay && !isAtRootLevel && currentRoute == "folder") {
-            Log.d("BackDebug", "🔙 BACK PRESSED - Handler: FOLDER NAVIGATION")
-            Log.d("BackDebug", "   Ação: Voltando para pasta anterior")
-            // Limpa seleção ao voltar
-            if (selectedItems.isNotEmpty()) {
-                selectedItems.clear()
-            }
-            // When navigating back from a locked subfolder, update currentFolderPath to parent
-            val parentFolder = File(folderPath).parent
-            if (parentFolder != null && FolderLockManager.isLocked(folderPath) &&
-                LockedPlaybackSession.hasSessionForFolder(folderPath)) {
-                if (LockedPlaybackSession.hasSessionForFolder(parentFolder)) {
-                    LockedPlaybackSession.setCurrentFolder(parentFolder)
-                }
-            }
-            folderNavState.navigateBack()
-        }
-
-        // BackHandler para ignorar voltar na root (não fecha o app)
-        BackHandler(enabled = !showPlayerOverlay && isAtRootLevel && currentRoute == "folder") {
-            val now = System.currentTimeMillis()
-            if (now - lastRootBackPressTime <= 2500L) {
-                hostActivity.moveTaskToBack(true)
-            } else {
-                lastRootBackPressTime = now
-                SortRowMessageCenter.showInfo(context.getString(R.string.press_back_again_to_exit), durationMs = 2500L)
-            }
-        }
-
-        // BackHandler para o overlay - PRIORIDADE MÁXIMA (registrado por último)
-        BackHandler(enabled = showPlayerOverlay) {
-            Log.d("BackDebug", "🔙 BACK PRESSED - Handler: OVERLAY (após NavHost)")
-            Log.d("BackDebug", "   Ação: Fechando overlay")
-            closePlayerOverlay()
-        }
-
-        VideoPlayerOverlay(
-            isVisible = showPlayerOverlay,
-            canControlRotation = showPlayerOverlay,
-            onDismiss = { closePlayerOverlay() },
-            onManageTags = {
-                showPlayerOverlay = false
-                isInPiPMode = false
-                navController.navigate("settings/tags")
-            },
-            onVideoDeleted = { deletedPath ->
-                deletedVideoPath = deletedPath
-                CoroutineScope(Dispatchers.Main).launch {
-                    delay(100)
-                    deletedVideoPath = null
-                }
-            },
-            selectedExternalSubtitleUri = selectedExternalSubtitleUri,
-            selectedExternalSubtitleName = selectedExternalSubtitleName,
-            onExternalSubtitleCleared = {
-                selectedExternalSubtitleUri = null
-                selectedExternalSubtitleName = null
-            },
-            onExternalSubtitleClick = {
-                subtitleFilePicker?.launch(
-                    arrayOf(
-                        "application/x-subrip",
-                        "text/vtt",
-                        "text/plain",
-                        "application/octet-stream"
-                    )
-                )
-            }
-        )
 
     }
 }

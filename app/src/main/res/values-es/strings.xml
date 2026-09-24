@@ -38,6 +38,10 @@
     <string name="empty_folder_title">Carpeta vacía</string>
     <string name="empty_folder_message">No hay carpetas ni videos visibles aquí en este momento.</string>
     <string name="neko_private_folder_name">Bóveda Privada</string>
+    <string name="vault_fab_locked">Abrir caja fuerte privada</string>
+    <string name="vault_fab_unlocked">Ocultar caja fuerte privada</string>
+    <string name="display_show_folder_sizes">Mostrar tamaño de carpetas</string>
+    <string name="display_show_folder_sizes_desc">Mostrar el tamaño total de todo el contenido de cada carpeta</string>
     <string name="secure_folders_hidden">Carpetas seguras ocultas</string>
     <string name="secure_folders_shown">Carpetas seguras mostradas</string>
     <string name="select_private_folders_to_unprivatize">Selecciona carpetas privadas para desprivatizar</string>

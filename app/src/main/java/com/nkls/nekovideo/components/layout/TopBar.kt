@@ -265,7 +265,7 @@ fun TopBar(
                         Icon(
                             painter = painterResource(id = R.drawable.topbaricon),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = Color.Unspecified,
                             modifier = Modifier
                                 .size(32.dp)
                                 .graphicsLayer {
@@ -294,7 +294,7 @@ fun TopBar(
                         Icon(
                             painter = painterResource(id = R.drawable.topbaricon),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = Color.Unspecified,
                             modifier = Modifier
                                 .size(28.dp)
                                 .graphicsLayer {
@@ -388,7 +388,7 @@ fun TopBar(
                         Icon(
                             painter = painterResource(id = R.drawable.topbaricon),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = Color.Unspecified,
                             modifier = Modifier
                                 .size(32.dp)
                                 .graphicsLayer {
