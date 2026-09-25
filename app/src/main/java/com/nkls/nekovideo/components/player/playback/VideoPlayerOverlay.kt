@@ -805,12 +805,22 @@ fun VideoPlayerOverlay(
     /**
      * 把播放模式应用到播放器（第 5 轮抽出，供"点按钮切换"与"初始化"共用）。
      *
-     * ⚠️ [RepeatMode.SHUFFLE] 不是 ExoPlayer 的独立 repeat 常量 —— 它必须同时设置
-     * `shuffleModeEnabled = true` **和** `REPEAT_MODE_ALL`，才是"打乱后无限循环"
-     * （只开 shuffle 而不设 ALL，播到最后一条依然会停）。
-     * 其余三态都要把 shuffle 关掉，否则会留下"上次的随机"没清干净。
+     * ⚠️ 第 6 轮修复后，[RepeatMode.SHUFFLE] **不再**使用 ExoPlayer 自带的 shuffle：
+     * 那会洗出**第二套互不相干的顺序**，与 `PlaylistManager` 的洗牌袋打架 ——
+     * 这正是"按标签随机播放在第三条就卡死"这个缺陷的第二层根因。
+     * 现在随机只留一套引擎，由 `PlaylistManager` 抽签决定跳哪一条。
+     *
+     * 所以随机态设的是 `shuffleModeEnabled = false` + `REPEAT_MODE_OFF`：
+     * - 关 shuffle → ExoPlayer 不会自己再洗一遍牌；
+     * - `REPEAT_MODE_OFF` → ExoPlayer **不再按列表顺序自动前进**，自动前进改由服务端抽签接管
+     *   （见 `MediaPlaybackService.onMediaItemTransition(AUTO)` 与 `STATE_ENDED` 两处）。
+     *
+     * 另外四态都要保证 `shuffleModeEnabled = false`，否则会留下"上次的随机"没清干净。
      */
     fun applyRepeatMode(mode: RepeatMode) {
+        // 同步抽签引擎的开关（PlaylistManager 是进程内单例，UI 层可直接调）。
+        PlaylistManager.setShuffleEnabled(mode == RepeatMode.SHUFFLE)
+
         mediaController?.let { controller ->
             when (mode) {
                 RepeatMode.NONE -> {
@@ -826,8 +836,9 @@ fun VideoPlayerOverlay(
                     controller.repeatMode = Player.REPEAT_MODE_ONE
                 }
                 RepeatMode.SHUFFLE -> {
-                    controller.shuffleModeEnabled = true
-                    controller.repeatMode = Player.REPEAT_MODE_ALL
+                    // ⚠️ 千万别改回 shuffleModeEnabled = true —— 那是第二套随机。
+                    controller.shuffleModeEnabled = false
+                    controller.repeatMode = Player.REPEAT_MODE_OFF
                 }
             }
         }
@@ -841,7 +852,7 @@ fun VideoPlayerOverlay(
         pendingAutoPlayOnReady = controller.playWhenReady && controller.playbackState != Player.STATE_READY
         repeatMode = if (PlaylistManager.isShuffleEnabled) {
             // 这条列表是"随机播放"生成的（工具箱的随机、或长按播放模式按钮的按标签随机）
-            // → 直接进"随机"态（打乱 + 无限循环），而不是播完就停。
+            // → 直接进"随机"态（抽签 + 无限循环），而不是播完就停。
             RepeatMode.SHUFFLE
         } else {
             when (controller.repeatMode) {

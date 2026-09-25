@@ -529,10 +529,16 @@ fun MainScreen(
                 castManager.castPlaylist(shuffled, titles, 0)
             } else {
                 PlaylistManager.setPlaylist(shuffleCandidates, startIndex = 0, shuffle = true)
-                // 让播放器把模式同步成"随机（打乱 + 无限循环）"（第 5 轮）——
+                // 让播放器把模式同步成"随机（抽签 + 无限循环）"（第 5 轮加的通道）——
                 // 换了新列表但播放器一直在跑，不会重走 setupController。
                 pendingRepeatModeRequest = RepeatMode.SHUFFLE
-                MediaPlaybackService.startWithPlaylist(context, PlaylistManager.getFullPlaylist(), 0)
+                // ⚠️ 起播索引必须取"刚抽出来的那条"，**不能硬编码 0**（第 6 轮修复）——
+                // 否则服务端的 syncLoadedWindow(0) 会把刚抽好的签覆盖回列表首条，随机当场失效。
+                MediaPlaybackService.startWithPlaylist(
+                    context,
+                    PlaylistManager.getFullPlaylist(),
+                    PlaylistManager.getCurrentIndex()
+                )
                 openPlayerOverlay()
             }
             selectedItems.clear()

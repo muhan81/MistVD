@@ -3,8 +3,12 @@ package com.nkls.nekovideo.components.player
 /**
  * Modos de repetição do player
  *
- * 第 5 轮由三态扩为**四态**。注意 [SHUFFLE] 在播放器侧并不是一个独立的 repeat 常量 ——
- * 它映射为 `shuffleModeEnabled = true` **加上** `REPEAT_MODE_ALL`（打乱后无限循环、播完继续）。
+ * 第 5 轮由三态扩为**四态**。
+ *
+ * ⚠️ 第 6 轮修复后，[SHUFFLE] 在播放器侧**既不是** `shuffleModeEnabled`、**也不是**任何 repeat 常量。
+ * 它映射为 `shuffleModeEnabled = false` + `REPEAT_MODE_OFF`，随机顺序**完全由**
+ * `PlaylistManager` 的「洗牌袋 + 历史栈」抽签决定（见 `VideoPlayerOverlay.applyRepeatMode`）。
+ * 原因：ExoPlayer 自带的 shuffle 会洗出第二套互不相干的顺序，与洗牌袋打架。
  * 之所以仍放进同一个枚举：界面上只有一个按钮在循环切换，
  * 用同一个枚举才能保证"按钮显示的状态"与"播放器实际状态"严格一一对应。
  */

@@ -63,14 +63,19 @@ object PlaylistNavigator {
      * Avança para o próximo vídeo da playlist.
      * Atualiza o PlaylistManager E o player de forma sincronizada.
      *
+     * @param force `true` = uso interno do serviço (avanço automático ao fim do vídeo / interceptação
+     *   do avanço sequencial do ExoPlayer em modo aleatório). Pula o cooldown e o mutex
+     *   [isNavigating], porque esses eventos não são "cliques repetidos do usuário".
+     *   `false` (padrão) = clique do usuário, com todas as proteções.
      * @return true se navegou com sucesso, false se já está no fim ou bloqueado
      */
-    fun next(context: Context): Boolean {
-        if (!canNavigate()) {
-            return false
+    fun next(context: Context, force: Boolean = false): Boolean {
+        if (!force) {
+            if (!canNavigate()) {
+                return false
+            }
+            startNavigation()
         }
-
-        startNavigation()
 
         try {
             val indexBefore = PlaylistManager.getRequestedIndex()
@@ -79,7 +84,7 @@ object PlaylistNavigator {
                 is PlaylistManager.NavigationResult.Success -> {
                     val indexAfter = PlaylistManager.getRequestedIndex()
 
-                    Log.d(TAG, "Next: $indexBefore → $indexAfter")
+                    Log.d(TAG, "Next: $indexBefore → $indexAfter (force=$force)")
                     MediaPlaybackService.seekToPlaylistIndex(context, indexAfter, autoPlay = true)
                     true
                 }
@@ -93,7 +98,9 @@ object PlaylistNavigator {
                 }
             }
         } finally {
-            endNavigation()
+            if (!force) {
+                endNavigation()
+            }
         }
     }
 
@@ -101,14 +108,20 @@ object PlaylistNavigator {
      * Volta para o vídeo anterior da playlist.
      * Atualiza o PlaylistManager E o player de forma sincronizada.
      *
+     * Em modo aleatório isto percorre o **histórico** de reprodução (não sorteia de novo):
+     * volta para a faixa que você realmente viu. Ao chegar na primeira posição do histórico,
+     * continua descendo em ciclo (decisão do dono do produto: os dois sentidos são infinitos).
+     *
+     * @param force `true` = uso interno do serviço (sem cooldown / mutex). `false` (padrão) = clique do usuário.
      * @return true se navegou com sucesso, false se já está no início ou bloqueado
      */
-    fun previous(context: Context): Boolean {
-        if (!canNavigate()) {
-            return false
+    fun previous(context: Context, force: Boolean = false): Boolean {
+        if (!force) {
+            if (!canNavigate()) {
+                return false
+            }
+            startNavigation()
         }
-
-        startNavigation()
 
         try {
             val indexBefore = PlaylistManager.getRequestedIndex()
@@ -117,7 +130,7 @@ object PlaylistNavigator {
                 is PlaylistManager.NavigationResult.Success -> {
                     val indexAfter = PlaylistManager.getRequestedIndex()
 
-                    Log.d(TAG, "Previous: $indexBefore → $indexAfter")
+                    Log.d(TAG, "Previous: $indexBefore → $indexAfter (force=$force)")
                     MediaPlaybackService.seekToPlaylistIndex(context, indexAfter)
                     true
                 }
@@ -131,7 +144,9 @@ object PlaylistNavigator {
                 }
             }
         } finally {
-            endNavigation()
+            if (!force) {
+                endNavigation()
+            }
         }
     }
 

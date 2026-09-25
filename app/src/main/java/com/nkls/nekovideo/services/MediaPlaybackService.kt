@@ -350,6 +350,26 @@ class MediaPlaybackService : MediaSessionService() {
                 return
             }
 
+            // 随机模式（第 6 轮修复）：ExoPlayer 的自动前进永远按**列表顺序**走 —— 那不是我们要的随机。
+            // 这里拦下它，改由 PlaylistManager 的洗牌袋抽签 + seek。
+            // ⚠️ 必须直接 return：下面那段会把播放器的物理索引无条件写回 PlaylistManager
+            //（`confirmCurrentIndex`），那会覆盖掉刚抽好的签 —— 这正是本缺陷的第二层根因。
+            if (PlaylistManager.isShuffleEnabled && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                currentPlaybackProcessingJob?.cancel()
+
+                // 保住元数据追踪，否则下一条的"继续观看"清理与缩略图会错位。
+                val autoUri = mediaItem?.localConfiguration?.uri?.toString()
+                val autoPreviousUri = trackedMediaItemUri
+                if (autoPreviousUri != null && autoPreviousUri != autoUri) {
+                    clearSavedProgressForUri(autoPreviousUri)
+                }
+                trackedMediaItemUri = autoUri
+
+                Log.d("MediaPlaybackService", "onMediaItemTransition(AUTO) em modo aleatório → sorteia")
+                PlaylistNavigator.next(this@MediaPlaybackService, force = true)
+                return
+            }
+
             currentPlaybackProcessingJob?.cancel()
 
             val currentUri = mediaItem?.localConfiguration?.uri?.toString()
@@ -390,7 +410,14 @@ class MediaPlaybackService : MediaSessionService() {
                     if (currentPlayer.repeatMode != Player.REPEAT_MODE_ONE) {
                         clearSavedProgressForCurrentItem(currentPlayer)
                     }
-                    handleEndOfPlaylistIfNeeded(currentPlayer)
+                    if (PlaylistManager.isShuffleEnabled) {
+                        // 随机模式（第 6 轮修复）：列表末尾播完也必须继续抽签，绝不能停住。
+                        // 非末尾的自动前进走 onMediaItemTransition(AUTO)，这里是**最后一条**的出口。
+                        Log.d("MediaPlaybackService", "STATE_ENDED em modo aleatório → sorteia")
+                        PlaylistNavigator.next(this@MediaPlaybackService, force = true)
+                    } else {
+                        handleEndOfPlaylistIfNeeded(currentPlayer)
+                    }
                 }
             }
 
@@ -948,6 +975,12 @@ class MediaPlaybackService : MediaSessionService() {
             return
         }
 
+        // 随机模式永远有下一条（见 PlaylistManager.next 的随机分支），不允许在这里把播放停住。
+        // 这里只是兜底 —— 调用点 onPlaybackStateChanged 已经先分流给抽签了。
+        if (PlaylistManager.isShuffleEnabled) {
+            return
+        }
+
         val currentIndex = currentPlayer.currentMediaItemIndex
         val isLastItem = currentIndex >= currentPlayer.mediaItemCount - 1
 
@@ -1007,6 +1040,10 @@ class MediaPlaybackService : MediaSessionService() {
 
         player = createConfiguredPlayer().apply {
             repeatMode = currentRepeatMode
+            // shuffleModeEnabled 刻意**不**恢复：随机只留 PlaylistManager 一套引擎，
+            // ExoPlayer 自带的 shuffle 会洗出第二套互不相干的顺序（见 PlaylistManager 的 KDoc）。
+            // ExoPlayer.Builder 默认即 false，所以这里不需要赋值 —— 加注释是为了防止
+            // 以后有人"顺手"把它补回来。
         }
 
         currentSession.player = player!!
