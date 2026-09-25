@@ -605,4 +605,5 @@
     <string name="logs_export_fail">Error al exportar</string>
     <string name="logs_copied">Copiado al portapapeles</string>
     <string name="logs_privacy_hint">El registro contiene rutas de archivos. Confirma antes de compartir.</string>
+    <string name="logs_row_title">Línea completa</string>
 </resources>

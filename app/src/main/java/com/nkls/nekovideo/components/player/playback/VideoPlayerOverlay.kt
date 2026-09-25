@@ -14,6 +14,7 @@ import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
+import android.view.LayoutInflater
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -309,8 +310,18 @@ fun VideoPlayerOverlay(
 
     // PlayerView sem controles nativos
 
+    // ★ 第 9 轮（修复 R2）：改为从 XML 布局 inflate。
+    //   原因一：PlayerView 的 surface_type **只能通过 XML 属性设置**
+    //   （SURFACE_TYPE_TEXTURE_VIEW 是 private 常量，没有公开 setter —— 已用 javap 打在
+    //    media3-ui-1.7.1 的 classes.jar 上确认，构造函数只有 3 个）。
+    //   原因二：我们要把输出面从 SurfaceView 换成 TextureView。
+    //   SurfaceView 的 Surface 由系统**异步**创建/销毁，在"刚绑定播放器"的阶段会短暂没有尺寸
+    //   （v1.21 真机日志里 onSurfaceSizeChanged 报 -1x-1 / 0x0）；而美颜用的 VideoFrameProcessor
+    //   必须有**有效且带尺寸的输出面**才能把管线接起来。
+    //   TextureView 的 SurfaceTexture 在视图 attach 后即可用、尺寸随视图立即确定，正好消掉这个空窗。
+    //   ★ 回退成本极低：把 res/layout/view_player.xml 里的 surface_type 改回 surface_view 即可。
     val playerView = remember {
-        PlayerView(context).apply {
+        (LayoutInflater.from(context).inflate(R.layout.view_player, null) as PlayerView).apply {
             useController = false
             setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
             resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -340,6 +351,12 @@ fun VideoPlayerOverlay(
                     subtitleView?.setCues(adjustedCues)
                 }
             })
+            // ★ 第 9 轮：把输出面类型写进日志 —— 下次排查一眼确认 R2 是否真的生效。
+            TaskLogger.i(
+                TaskLogger.Channel.UI, "playerView.created",
+                "surfaceType=texture_view resizeMode=FIT " +
+                    "(修复 R2：特效管线需要有效且有尺寸的输出面)"
+            )
         }
     }
 

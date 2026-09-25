@@ -603,4 +603,5 @@
     <string name="logs_export_fail">Falha ao exportar</string>
     <string name="logs_copied">Copiado para a área de transferência</string>
     <string name="logs_privacy_hint">O log contém caminhos de arquivo. Confirme antes de compartilhar.</string>
+    <string name="logs_row_title">Linha completa</string>
 </resources>

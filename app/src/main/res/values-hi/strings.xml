@@ -605,4 +605,5 @@
     <string name="logs_export_fail">निर्यात विफल</string>
     <string name="logs_copied">क्लिपबोर्ड पर कॉपी किया गया</string>
     <string name="logs_privacy_hint">लॉग में फ़ाइल पथ शामिल हैं। साझा करने से पहले जाँच लें।</string>
+    <string name="logs_row_title">पूरी पंक्ति</string>
 </resources>

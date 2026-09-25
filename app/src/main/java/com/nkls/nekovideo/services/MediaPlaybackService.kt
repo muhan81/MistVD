@@ -248,6 +248,21 @@ class MediaPlaybackService : MediaSessionService() {
     /** 当前 player 的 renderer 里是否**已经建了 VideoGraph**（= 曾用非空列表调过 setVideoEffects）。 */
     private var beautyPipelineActive = false
 
+    /**
+     * ★ 第 9 轮（修复 R1-a）：**当前管线里实际装着的那一份参数**。
+     *
+     * 由 [createConfiguredPlayer]（build 阶段装上后）与 [applyBeautyEffects]（动态下发成功后）写入。
+     * 有了它才能识别"界面把同一份参数又下发了一遍"这种**无变化的重下发** ——
+     * 而那种重下发会重建 `VideoFrameProcessor`，且恰好落在 prepare 窗口里（详见 [applyBeautyEffects]）。
+     */
+    private var appliedBeautyParams: BeautyParams = BeautyParams.DEFAULT
+
+    /**
+     * ★ 第 9 轮（修复 R1-c）：因播放器还没 `STATE_READY` 而**推迟**的特效更新。
+     * 到 `onPlaybackStateChanged(STATE_READY)` 时补发（见 playerListener）。
+     */
+    private var pendingDynamicApply: BeautyParams? = null
+
     // ─────────────────────────────────────────────────────────────────────────────
     // 第 8 轮：日志辅助
     // ─────────────────────────────────────────────────────────────────────────────
@@ -263,6 +278,17 @@ class MediaPlaybackService : MediaSessionService() {
     private fun BeautyParams.logText(): String =
         "smooth=$smooth,whiten=$whiten,rosy=$rosy,sharpen=$sharpen," +
             "bright=$brightness,contrast=$contrast,sat=$saturation"
+
+    /** 数一数异常链有多深（只用于摘要行，不展开内容）。 */
+    private fun causeChainDepth(t: Throwable?): Int {
+        var c = t?.cause
+        var n = 0
+        while (c != null && n < 16) {
+            n++
+            c = c.cause
+        }
+        return n
+    }
 
     /** 播放状态常量转可读名 —— 日志里写数字等于没写。 */
     private fun stateName(state: Int): String = when (state) {
@@ -298,6 +324,9 @@ class MediaPlaybackService : MediaSessionService() {
                 // 而"空列表 ≠ 无特效"（见上方注释①）⇒ 未开美颜也切进了 VideoGraph ⇒ 黑屏。
                 // setVideoEffects 必须在 prepare() 之前调用才能建起管线，所以放在 build() 里。
                 beautyPipelineActive = false
+                // ★ 第 9 轮（R1-e）：重建时 build 阶段会把参数装好，所以推迟队列必须清空，
+                //   否则 READY 之后会把同一份参数再重装一次（正是我们要消灭的那次）。
+                pendingDynamicApply = null
                 if (!pendingBeautyParams.isDefault) {
                     val effects = runCatching { BeautyEffects.build(pendingBeautyParams) }
                         .getOrElse { emptyList() }
@@ -312,6 +341,11 @@ class MediaPlaybackService : MediaSessionService() {
                         beautyPipelineActive = false
                         TaskLogger.e(TaskLogger.Channel.BEAUTY, "setVideoEffects.failed", it)
                     }
+                    // ★ 第 9 轮（R1-a）：记下"管线里现在装的就是这一份"。装失败则回到默认，
+                    //   否则会把"没装上"误判成"已一致"而永远不再下发。
+                    appliedBeautyParams =
+                        if (beautyPipelineActive) BeautyParams.sanitize(pendingBeautyParams)
+                        else BeautyParams.DEFAULT
                     TaskLogger.i(
                         TaskLogger.Channel.BEAUTY, "setVideoEffects.done",
                         "at=build ok=$beautyPipelineActive effects=${effects.size} " +
@@ -321,6 +355,7 @@ class MediaPlaybackService : MediaSessionService() {
                 } else {
                     // "什么都没做"也必须留证据：否则日志里"没出现 setVideoEffects"
                     // 无法区分"故意跳过"与"代码没跑到"。
+                    appliedBeautyParams = BeautyParams.DEFAULT
                     TaskLogger.i(
                         TaskLogger.Channel.BEAUTY, "setVideoEffects.skip",
                         "at=build reason=paramsDefault (★ 未启用就一次 API 都不调，避免切进 VideoGraph)"
@@ -416,6 +451,36 @@ class MediaPlaybackService : MediaSessionService() {
                 return
             }
             pendingBeautyParams = p
+
+            // ── ★ 第 9 轮（修复 R1-b）：参数与"管线里实际装着的那份"完全一致 ⇒ 一次 API 都不调。
+            //   为什么这条能治病：Media3 的 setVideoEffects 内部是发 MSG_SET_VIDEO_EFFECTS，
+            //   它会**重建 VideoFrameProcessor**（一整条 OpenGL 后台管线）。而原来的代码在
+            //   "刚 updatePlaylist、renderer 还在 prepare"的窗口里把同一份特效又装了一遍 ——
+            //   v1.21 真机日志：at=build 39.316 → at=apply-dynamic 39.425，参数完全相同。
+            //   那一刻输出面还不有效（onSurfaceSizeChanged 报 -1x-1 / 0x0、onVideoSizeChanged 报 0x0），
+            //   新管线接不上画面：要么永远不出首帧（视频 A），要么 44 ms 后 7001（视频 B）。
+            if (p == appliedBeautyParams) {
+                TaskLogger.i(
+                    TaskLogger.Channel.BEAUTY, "setVideoEffects.skip",
+                    "at=apply-dynamic reason=paramsUnchanged " +
+                        "(★ 管线里已经是这份参数，重下发会重建 VideoFrameProcessor)"
+                )
+                return
+            }
+
+            // ── ★ 第 9 轮（修复 R1-c）：播放器还没 READY（= 正在 prepare）时不下发。
+            //   "prepare 进行到一半"是特效管线最脆的窗口：renderer 正要在 onEnabled() 里
+            //   初始化 VideoFrameProcessor，输出面尚未绑定。记下来，等 STATE_READY 再补发。
+            if (currentPlayer.playbackState != Player.STATE_READY) {
+                pendingDynamicApply = p
+                TaskLogger.i(
+                    TaskLogger.Channel.BEAUTY, "setVideoEffects.deferred",
+                    "state=${stateName(currentPlayer.playbackState)} " +
+                        "(★ prepare 期间改特效会让 VideoFrameProcessor 重建 ⇒ 推迟到 STATE_READY)"
+                )
+                return
+            }
+
             val effects = runCatching { BeautyEffects.build(p) }.getOrElse { emptyList() }
             TaskLogger.i(
                 TaskLogger.Channel.BEAUTY, "setVideoEffects.start",
@@ -423,6 +488,7 @@ class MediaPlaybackService : MediaSessionService() {
             )
             runCatching {
                 currentPlayer.setVideoEffects(effects)
+                appliedBeautyParams = p
             }.onFailure {
                 TaskLogger.e(TaskLogger.Channel.BEAUTY, "setVideoEffects.failed", it)
             }
@@ -593,12 +659,18 @@ class MediaPlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            // ★ 第 8 轮：errorCode 与因果链一起记 —— 只有 message 常常看不出是哪一类失败。
+            // ★ 第 9 轮改造：以前把 msg + cause 拼在**一行**里，而 msg 本身就有 400 字符左右，
+            //   结果最关键的 cause= 总是被挤掉（v1.21 真机日志实测丢了 225 字符）。
+            //   现在拆成两层，从**结构上**摆脱"单行长度"这个约束：
+            //     ① 短摘要行：只放永远看得见的字段，且把 cause 提到前面
+            //     ② 完整因果链 + 堆栈：逐帧独立成行（logStackTrace），多长都不会被截
+            val root = error.cause
             TaskLogger.e(
                 TaskLogger.Channel.ERROR, "onPlayerError",
-                "code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} " +
-                    "cause=${error.cause?.javaClass?.name}:${error.cause?.message}"
+                "code=${error.errorCode} name=${error.errorCodeName} " +
+                    "cause0=${root?.javaClass?.name ?: "<无>"} causeDepth=${causeChainDepth(error)}"
             )
+            TaskLogger.logStackTrace(TaskLogger.Channel.ERROR, "onPlayerError", error)
             Log.e("MediaPlaybackService", "Player error: ${error.message}")
         }
 
@@ -686,6 +758,16 @@ class MediaPlaybackService : MediaSessionService() {
 
             if (playbackState == Player.STATE_READY) {
                 scheduleCurrentPlaybackProcessing()
+                // ★ 第 9 轮（修复 R1-d）：把 prepare 期间被推迟的特效更新补上。
+                //   先取出并清空，再调用 —— 避免 applyBeautyEffects 内部再入时重复应用。
+                pendingDynamicApply?.let { queued ->
+                    pendingDynamicApply = null
+                    TaskLogger.i(
+                        TaskLogger.Channel.BEAUTY, "setVideoEffects.resume",
+                        "state=READY ⇒ 补上 prepare 期间被推迟的特效更新"
+                    )
+                    applyBeautyEffects(queued)
+                }
             } else {
                 currentPlaybackProcessingJob?.cancel()
             }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ★ 第 9 轮（修复 R2）：视频输出面从 SurfaceView 改为 TextureView。
+
+  为什么这么做：
+  开启美颜会走 Media3 的 setVideoEffects ⇒ renderer 内部要建一条 VideoFrameProcessor
+  OpenGL 管线，而它必须有一个**有效、且带尺寸的输出面**才能把管线接起来。
+  但 SurfaceView 的 Surface 是系统**异步**创建/销毁的，在"刚绑定播放器"的阶段会短暂
+  没有尺寸（v1.21 真机日志里 onSurfaceSizeChanged 报 -1x-1 / 0x0）。
+  TextureView 的 SurfaceTexture 在视图 attach 之后即可用、尺寸随视图立即确定，
+  正好消掉这个空窗。
+
+  为什么必须写成 XML：
+  PlayerView 的 surface_type **只能通过 XML 属性设置** ——
+  SURFACE_TYPE_TEXTURE_VIEW 在 media3-ui 里是 private 常量、没有公开 setter
+  （已用 javap 打在 media3-ui-1.7.1 的 classes.jar 上确认，构造函数只有 3 个）。
+
+  ★ 回退成本极低：把下面 surface_type 改回 surface_view 即可（一个词）。
+    其余属性刻意**不在这里设置**，仍在 VideoPlayerOverlay 的 Kotlin 代码里，
+    这样这个文件只有一个职责（选定输出面类型），改动面最小。
+-->
+<androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:surface_type="texture_view" />

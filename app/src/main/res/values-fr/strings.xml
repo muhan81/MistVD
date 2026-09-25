@@ -605,4 +605,5 @@
     <string name="logs_export_fail">Échec de l\'exportation</string>
     <string name="logs_copied">Copié dans le presse-papiers</string>
     <string name="logs_privacy_hint">Le journal contient des chemins de fichiers. Vérifiez avant de partager.</string>
+    <string name="logs_row_title">Ligne complète</string>
 </resources>

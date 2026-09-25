@@ -613,4 +613,5 @@
     <string name="logs_export_fail">Не удалось экспортировать</string>
     <string name="logs_copied">Скопировано в буфер обмена</string>
     <string name="logs_privacy_hint">Журнал содержит пути к файлам. Проверьте перед отправкой.</string>
+    <string name="logs_row_title">Полная строка</string>
 </resources>

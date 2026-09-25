@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -77,6 +79,10 @@ fun LogViewerScreen() {
     var lines by remember { mutableStateOf(TaskLogger.snapshot(MAX_UI_LINES)) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    // ★ 第 9 轮：点某一行 → 弹窗看**全文**。
+    //   原来每行只显示 2 行就省略号（界面里的第二层截断），业主在界面上看不到全貌，
+    //   会误以为"日志还是坏的"（其实导出文件是完整的）。
+    var selectedLine by remember { mutableStateOf<String?>(null) }
 
     // 日志在播放时是持续增长的 → 定时刷新。用 1 秒轮询而不是"每行触发重组"，
     // 因为高频重组这条链路本身会把播放拖慢（那就本末倒置了）。
@@ -225,8 +231,12 @@ fun LogViewerScreen() {
                         fontFamily = FontFamily.Monospace,
                         fontSize = 9.sp,
                         lineHeight = 12.sp,
-                        maxLines = 2,
+                        // ★ 第 9 轮：2 → 6，并且**点一下看全文**（见下方 selectedLine 弹窗）。
+                        maxLines = 6,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedLine = line },
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
                     )
                 }
@@ -250,6 +260,40 @@ fun LogViewerScreen() {
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    // ★ 第 9 轮：单行全文弹窗（长行、会话头这类内容在列表里看不全时用）
+    selectedLine?.let { full ->
+        AlertDialog(
+            onDismissRequest = { selectedLine = null },
+            title = { Text(stringResource(R.string.logs_row_title)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(full, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("MistVD log line", full))
+                    }
+                    SortRowMessageCenter.showSuccess(context.getString(R.string.logs_copied))
+                    selectedLine = null
+                }) {
+                    Text(stringResource(R.string.logs_copy))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedLine = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }

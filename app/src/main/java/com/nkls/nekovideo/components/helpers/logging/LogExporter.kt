@@ -119,21 +119,46 @@ object LogExporter {
      */
     private fun readBody(context: Context, sessionFile: File?): String {
         try {
-            if (sessionFile != null && sessionFile.exists() && sessionFile.length() > 0) {
-                val lines = sessionFile.readLines()
-                if (lines.isNotEmpty()) {
-                    return if (lines.size <= MAX_BODY_LINES) {
-                        lines.joinToString("\n")
-                    } else {
-                        lines.takeLast(MAX_BODY_LINES).joinToString("\n")
+            // ★ 第 9 轮修复：以前只读**主卷** `log-<stamp>.txt`。
+            //   日志超过 1 MB 会自动分卷（`log-<stamp>-p2.txt` …），而那些分卷
+            //   **完全不会进导出文件** —— 等于悄悄丢掉后半段。现在按序号全部拼起来。
+            val parts = sessionParts(sessionFile)
+            if (parts.isNotEmpty()) {
+                val sb = StringBuilder(256 * 1024)
+                var emitted = 0
+                for (part in parts) {
+                    for (line in part.readLines()) {
+                        if (emitted >= MAX_BODY_LINES) break
+                        sb.append(line).append('\n')
+                        emitted++
                     }
                 }
+                if (sb.isNotEmpty()) return sb.toString()
             }
         } catch (_: Throwable) {
         }
         // 退路：内存缓冲（例如文件还没被写入线程创建出来）
         val mem = TaskLogger.snapshot(maxLines = 0)
         return if (mem.isEmpty()) "(本次会话暂无日志)\n" else mem.joinToString("\n")
+    }
+
+    /**
+     * 同一会话的全部分卷，按序号升序：`log-<stamp>.txt` 在前，`log-<stamp>-p2.txt` … 在后。
+     *
+     * 主卷文件名由 [TaskLogger] 用 `yyyyMMdd-HHmmss` 生成，分卷在其后追加 `-pN`，
+     * 所以用"前缀匹配 + 解析 N 排序"即可，不必额外记录会话 id。
+     */
+    private fun sessionParts(sessionFile: File?): List<File> {
+        val main = sessionFile ?: return emptyList()
+        if (!main.exists() || main.length() == 0L) return emptyList()
+        val dir = main.parentFile ?: return listOf(main)
+        val base = main.nameWithoutExtension
+        val extra = dir.listFiles { f ->
+            f.isFile && f.name.startsWith("$base-p") && f.name.endsWith(".txt")
+        }?.sortedBy {
+            it.name.substringAfterLast("-p").substringBefore('.').toIntOrNull() ?: Int.MAX_VALUE
+        } ?: emptyList()
+        return listOf(main) + extra
     }
 
     // ───────────────────────────────────────────────────────────── 分享

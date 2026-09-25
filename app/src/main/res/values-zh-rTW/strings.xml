@@ -588,4 +588,5 @@
     <string name="logs_export_fail">匯出失敗</string>
     <string name="logs_copied">已複製到剪貼簿</string>
     <string name="logs_privacy_hint">日誌包含檔案路徑等資訊，對外分享前請確認。</string>
+    <string name="logs_row_title">該行完整內容</string>
 </resources>

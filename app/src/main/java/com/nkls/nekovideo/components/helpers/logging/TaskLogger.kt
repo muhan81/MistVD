@@ -14,8 +14,10 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -139,12 +141,41 @@ object TaskLogger {
     private const val WRITER_THREAD_NAME = "MistVD-LogWriter"
     private const val LOGCAT_TAG = "MistVD"
 
-    /** 单行里单个值的最长长度，超出截断（路径可能很长）。 */
-    private const val MAX_VALUE_CHARS = 200
+    /**
+     * 单行里单个值（detail）的最长长度，超出按"保头 + 保尾"截断。
+     *
+     * ★ 第 9 轮：200 → 4000。
+     * 依据：v1.21 真机日志实测，"开美颜无法播放"那条 onPlayerError 的原始 detail 为 **405 字符**
+     * （200 的上限只够放下前 180），导致 `msg=` 后半段与整个 `cause=` 被丢弃 ——
+     * 而 `cause=` 正是唯一能指名道姓的那条线索。4000 相对实测需求留约 10 倍余量。
+     * 单行总长上界 = 前缀(<=56) + 4000 ≈ 4056 字符 ≈ 4 KB，有界，不需要额外的行级护栏。
+     */
+    private const val MAX_VALUE_CHARS = 4000
+
+    /** 截断时保留的头部比例（其余留给尾部）。尾部必须保：异常的 `cause=` 总排在末尾。 */
+    private const val CLIP_HEAD_RATIO = 0.6
 
     private val TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     private val STAMP_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
     private val FULL_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+    /**
+     * ★ 第 9 轮：诊断摘要所依赖的事件名白名单（在 [log] 出口做旁路计数）。
+     *
+     * 为什么必须要有它：摘要原先靠"在文本里 grep 关键词"来数数，而 `onPlayerError` 现在会输出
+     * **多行堆栈**，每一帧都含 `E/error ` ⇒ 1 次错误会被数成 30+ 次。
+     * 改成显式旁路计数后，计数不再受日志格式影响（与 [buildSummary] 配套）。
+     */
+    private val KEY_EVENTS = setOf(
+        "setVideoEffects.done",
+        "setVideoEffects.start",
+        "setVideoEffects.skip",
+        "player.rebuild",
+        "onRenderedFirstFrame",
+        "onVideoSizeChanged",
+        "onSurfaceSizeChanged",
+        "decoderInitialized"
+    )
 
     // ───────────────────────────────────────────────────────────── 状态
 
@@ -159,6 +190,20 @@ object TaskLogger {
 
     private val queue = ArrayBlockingQueue<String>(QUEUE_CAPACITY)
     private val droppedLines = AtomicInteger(0)
+
+    // ★ 第 9 轮：自证用的计数器 —— 导出文件会自己把"有没有被截断"报出来，
+    //   业主无需读代码，搜"日志完整性"即可。
+    /** 因超长被 [clip] 截断过的行数。 */
+    private val clipCount = AtomicInteger(0)
+
+    /** 累计被省略的字符数。 */
+    private val clipChars = AtomicLong(0L)
+
+    /** 真正的错误"事件"数（不含 `.at` / `.cause` 这类堆栈帧行）。 */
+    private val errorEvents = AtomicInteger(0)
+
+    /** 关键事件的旁路计数（白名单见 [KEY_EVENTS]）。 */
+    private val keyEvents = ConcurrentHashMap<String, AtomicInteger>()
 
     @Volatile
     private var appContext: Context? = null
@@ -202,6 +247,14 @@ object TaskLogger {
 
             ensureWriter()
             writeSessionHeader(ctx)
+            // ★ 第 9 轮：把本次**实际生效的日志配置**写进日志本身 ——
+            //   业主导出后一眼就能确认"装的是新版、且新上限已生效"，不必问、不必查代码。
+            i(
+                Channel.ENV, "log.config",
+                "maxValueChars=$MAX_VALUE_CHARS clipMode=head${(CLIP_HEAD_RATIO * 100).toInt()}+tail" +
+                    " maxMemoryLines=$MAX_MEMORY_LINES maxFileBytes=$MAX_FILE_BYTES" +
+                    " keepLogs=$KEEP_LOG_FILES keepCrash=$KEEP_CRASH_FILES"
+            )
             installCrashHandler()
         } catch (t: Throwable) {
             // 日志系统自己起不来时，绝不能连累 App。
@@ -271,6 +324,17 @@ object TaskLogger {
                 while (ring.size > MAX_MEMORY_LINES) ring.removeFirst()
             }
             _version.value = _version.value + 1
+
+            // ★ 第 9 轮：旁路计数 —— 摘要不再依赖"在文本里 grep"，
+            //   因此不会被 onPlayerError 的多行堆栈带偏（1 次错误仍只算 1 次）。
+            if (level == Level.ERROR && !event.endsWith(".at") && !event.endsWith(".cause")) {
+                errorEvents.incrementAndGet()
+            }
+            if (event in KEY_EVENTS) {
+                // 用 getOrPut 而不是 computeIfAbsent：后者在部分 Android 版本上会因重入
+                // 抛 ConcurrentModificationException；这里只是计数，非原子也无关紧要。
+                keyEvents.getOrPut(event) { AtomicInteger(0) }.incrementAndGet()
+            }
 
             // 同步吐一份到 logcat：真机排查时用 adb 也能直接看
             Log.println(androidPriority(level), LOGCAT_TAG, line)
@@ -348,7 +412,6 @@ object TaskLogger {
             emptyList()
         }
 
-        fun count(needle: String): Int = lines.count { it.contains(needle) }
         fun has(needle: String): Boolean = lines.any { it.contains(needle) }
         fun lastWith(needle: String): String? = lines.lastOrNull { it.contains(needle) }
         fun value(line: String?, key: String): String {
@@ -360,17 +423,22 @@ object TaskLogger {
             return if (end < 0) rest else rest.substring(0, end)
         }
 
-        val applyCount = count("setVideoEffects.done")
+        // ★ 第 9 轮：计数一律改读"旁路计数"（在 log() 出口显式统计），不再靠文本 grep。
+        //   原因：onPlayerError 现在会输出多行堆栈、每帧都含 "E/error "，
+        //   继续用文本数数会把 1 次错误数成 30+ 次 —— 那是本轮自己会引入的误判。
+        fun keyCount(name: String): Int = keyEvents[name]?.get() ?: 0
+
+        val applyCount = keyCount("setVideoEffects.done")
         val lastEffects = value(lastWith("setVideoEffects.done"), "effects")
         val pipelineOn = lastWith("setVideoEffects.done")?.contains("pipeline=on") == true ||
             has("pipeline=ON")
-        val firstFrame = has("onRenderedFirstFrame")
-        val videoSizeEvents = count("onVideoSizeChanged")
-        val surfaceSizeEvents = count("onSurfaceSizeChanged")
+        val firstFrame = keyCount("onRenderedFirstFrame") > 0
+        val videoSizeEvents = keyCount("onVideoSizeChanged")
+        val surfaceSizeEvents = keyCount("onSurfaceSizeChanged")
         val decoderLine = lastWith("decoderInitialized")
         val decoder = value(decoderLine, "name")
-        val errors = count("E/error ")
-        val rebuilds = count("player.rebuild")
+        val errors = errorEvents.get()
+        val rebuilds = keyCount("player.rebuild")
         val hdrBlocked = has("hdrBlocked=true")
         val glError = has("gl.error") || has("build FAILED")
 
@@ -413,6 +481,15 @@ object TaskLogger {
             else -> "证据不足，请连同文件全文一并送检"
         }
         sb.append("8. 自动结论：").append(verdict).append('\n')
+
+        // ★ 第 9 轮新增第 9 条：**让日志自己声明有没有被截断** ——
+        //   业主只需搜"日志完整性"，看到"0 行"就是修好了，不必懂代码。
+        val clipped = clipCount.get()
+        sb.append("9. 日志完整性：本会话共 ").append(lines.size).append(" 行，其中 ")
+            .append(clipped).append(" 行因超长被截断（阈值 ")
+            .append(MAX_VALUE_CHARS).append(" 字符")
+        if (clipped > 0) sb.append("，累计省略 ").append(clipChars.get()).append(" 字符")
+        sb.append("）").append('\n')
 
         val dropped = droppedLines.get()
         if (dropped > 0) {
@@ -537,7 +614,7 @@ object TaskLogger {
 
         // 会话头必须同步落盘：保证它是文件的第一段，而不是被异步队列挤到后面
         runCatching { FileOutputStream(f, true).use { it.write((header + "\n").toByteArray()) } }
-        currentBytes = header.length.toLong() + 1L
+        currentBytes = (header + "\n").toByteArray().size.toLong()
     }
 
     private fun glEsVersion(ctx: Context): String = try {
@@ -580,8 +657,11 @@ object TaskLogger {
                 currentBytes = 0L
                 if (currentPart == 0) sessionFile = f
             }
-            FileOutputStream(f, true).use { it.write((line + "\n").toByteArray()) }
-            currentBytes += line.length.toLong() + 1
+            // ★ 第 9 轮：按**字节**累加。旧实现用 UTF-16 字符数，中文占 3 字节
+            //   ⇒ 1 MB 分卷判断偏晚约 3 倍（实际文件可能到 3 MB）。
+            val bytes = (line + "\n").toByteArray()
+            FileOutputStream(f, true).use { it.write(bytes) }
+            currentBytes += bytes.size.toLong()
         } catch (_: Throwable) {
         }
     }
@@ -620,14 +700,32 @@ object TaskLogger {
         return if (n == "main") "main" else n
     }
 
-    /** 换行/制表转成可见转义，保证"一行一条日志"的格式不被破坏。 */
+    /**
+     * 换行/制表转成**可见转义**：既保证"一行一条日志"的格式不被破坏，
+     * 又**不丢失原有的行结构**（多行异常 message 仍看得出在哪里断行）。
+     *
+     * ★ 第 9 轮修正：旧实现把 `\n` 换成了**空格**（旧注释却写的是"转成可见转义"），
+     * 而 Media3 的 `PlaybackException.message` 本身就是多行文本 ⇒ 被压成一长串、可读性差。
+     */
     private fun sanitize(s: String): String =
-        s.replace("\r\n", "\\n").replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        s.replace("\r\n", "\\n").replace("\n", "\\n").replace("\r", "\\n").replace('\t', ' ')
 
-    /** 超长值截断（路径可能很长），保留头部信息。 */
-    private fun clip(s: String): String =
-        if (s.length <= MAX_VALUE_CHARS) s
-        else s.take(MAX_VALUE_CHARS - 20) + "…<省略 ${s.length - MAX_VALUE_CHARS + 20} 字符>"
+    /**
+     * 超长值截断：**保头 + 保尾**，中间标注省略量。
+     *
+     * ★ 为什么必须保尾（第 9 轮）：异常的根因（`cause=`）在 detail 里**总是排在最后**，
+     * 而旧实现只保留头部 ⇒ 越关键的越先丢 —— v1.21 的真机日志正好踩中：
+     * `onPlayerError` 的 `msg=` 太长，把末尾的 `cause=` 整个挤掉，等于把唯一的线索丢了。
+     */
+    private fun clip(s: String): String {
+        if (s.length <= MAX_VALUE_CHARS) return s
+        val head = (MAX_VALUE_CHARS * CLIP_HEAD_RATIO).toInt()
+        val tail = MAX_VALUE_CHARS - head
+        val omitted = s.length - head - tail
+        clipCount.incrementAndGet()
+        clipChars.addAndGet(omitted.toLong())
+        return s.take(head) + "…<省略 $omitted 字符>…" + s.takeLast(tail)
+    }
 
     private fun describe(t: Throwable): String =
         "${t.javaClass.name}: ${t.message ?: "(no message)"}"

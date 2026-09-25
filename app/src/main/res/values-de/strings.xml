@@ -605,4 +605,5 @@
     <string name="logs_export_fail">Export fehlgeschlagen</string>
     <string name="logs_copied">In die Zwischenablage kopiert</string>
     <string name="logs_privacy_hint">Das Protokoll enthält Dateipfade. Bitte vor dem Teilen prüfen.</string>
+    <string name="logs_row_title">Vollständige Zeile</string>
 </resources>
