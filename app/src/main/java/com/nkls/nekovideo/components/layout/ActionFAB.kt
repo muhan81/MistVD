@@ -34,13 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nkls.nekovideo.R
 import com.nkls.nekovideo.components.helpers.FilesManager
+import com.nkls.nekovideo.components.helpers.supportedVideoExtensions
 
 enum class ActionType {
     UNLOCK, SECURE, DELETE, RENAME, MOVE, SHUFFLE_PLAY, CREATE_FOLDER, SETTINGS, PASTE,
     PRIVATIZE, UNPRIVATIZE, CANCEL_MOVE, SET_AS_SECURE_FOLDER, SHARE, TAGS,
     PIN_FOLDER, UNPIN_FOLDER,
     // 第 5 轮工具箱新增（不需要选中项即可使用的"文件夹级"动作）
-    SELECT_ALL, RESCAN, MANAGE_TAGS
+    SELECT_ALL, RESCAN, MANAGE_TAGS,
+    // 第 7 轮：美颜（未选中=全局设置；选中恰好一个视频=该视频设置；其余情况置灰）
+    BEAUTY
 }
 
 data class ActionItem(
@@ -116,6 +119,8 @@ fun ActionFAB(
     val selectAllText = stringResource(R.string.select_all)
     val rescanText = stringResource(R.string.action_rescan)
     val manageTagsText = stringResource(R.string.action_manage_tags)
+    // 第 7 轮美颜（复用设置页已有的标题文案）
+    val beautyText = stringResource(R.string.beauty_title)
 
     // Verifica se algum item selecionado é pasta trancada
     val hasLockedFolders = remember(selectedItems) {
@@ -141,6 +146,15 @@ fun ActionFAB(
         selectedItems.isNotEmpty() && selectedItems.all { java.io.File(it).isFile }
     }
 
+    // 第 7 轮：「美颜」的可用条件 —— 恰好选中 1 个视频文件。
+    // 未选中 → 走工具箱（= 全局设置）；选中多个 / 选中的是文件夹或图片 → 置灰。
+    // 扩展名清单用 VideoFormats 里那份顶层 val，别另起一份（ThumbnailManager 里那份是 private 且更短）。
+    val hasOnlyOneVideo = remember(selectedItems) {
+        selectedItems.size == 1 && java.io.File(selectedItems.first()).let { file ->
+            file.isFile && file.extension.lowercase() in supportedVideoExtensions
+        }
+    }
+
     val areAllSelectedItemsFolders = remember(selectedItems) {
         selectedItems.isNotEmpty() && selectedItems.all { java.io.File(it).isDirectory }
     }
@@ -162,7 +176,7 @@ fun ActionFAB(
         selectedItems.any { path -> java.io.File(path).absolutePath == nekoPrivatePath }
     }
 
-    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected, selectAllText, rescanText, manageTagsText, shufflePlayText, deleteText, renameText, moveText, shareText) {
+    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected, selectAllText, rescanText, manageTagsText, shufflePlayText, deleteText, renameText, moveText, shareText, hasOnlyOneVideo, beautyText) {
         when {
             isMoveMode -> {
                 listOf(
@@ -178,6 +192,17 @@ fun ActionFAB(
                         ActionType.SHUFFLE_PLAY,
                         Icons.Default.Shuffle,
                         shufflePlayText
+                    )
+                )
+
+                // 第 7 轮：只选中 1 个视频时可用；选了文件夹/图片/多个 → 置灰
+                // （置灰项仍接受点击，走 onDisabledActionClick 给提示，不会静默无反应）
+                actionsList.add(
+                    ActionItem(
+                        ActionType.BEAUTY,
+                        Icons.Default.AutoFixHigh,
+                        beautyText,
+                        isEnabled = hasOnlyOneVideo
                     )
                 )
 
@@ -257,6 +282,8 @@ fun ActionFAB(
                     add(ActionItem(ActionType.SELECT_ALL, Icons.Default.SelectAll, selectAllText))
                     add(ActionItem(ActionType.RESCAN, Icons.Default.Refresh, rescanText))
                     add(ActionItem(ActionType.MANAGE_TAGS, Icons.Default.Sell, manageTagsText))
+                    // 第 7 轮：未选中任何东西时点「美颜」= 进入全局美颜设置
+                    add(ActionItem(ActionType.BEAUTY, Icons.Default.AutoFixHigh, beautyText))
                     add(
                         ActionItem(
                             ActionType.SHUFFLE_PLAY,

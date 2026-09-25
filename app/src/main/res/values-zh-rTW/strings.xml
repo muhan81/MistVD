@@ -558,6 +558,11 @@
     <string name="beauty_only_this_video">僅此影片</string>
     <string name="beauty_only_this_video_desc">只對當前影片生效，其他影片仍用全域設定</string>
     <string name="beauty_reset">重置</string>
+    <string name="beauty_for_this_video">此影片美顏</string>
+    <string name="beauty_follow_global">跟隨全域設定</string>
+    <string name="beauty_clear_this_video">改回跟隨全域</string>
+    <string name="beauty_select_video_first">請先選取一個影片</string>
+    <string name="beauty_master_off_hint">總開關已關閉，調整已儲存，開啟後生效</string>
     <string name="beauty_presets">方案</string>
     <string name="beauty_save_preset">儲存為方案</string>
     <string name="beauty_preset_name">方案名稱</string>

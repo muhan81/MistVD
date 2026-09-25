@@ -77,10 +77,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.nkls.nekovideo.MainActivity
 import com.nkls.nekovideo.MediaPlaybackService
 import com.nkls.nekovideo.R
@@ -137,6 +139,7 @@ import com.nkls.nekovideo.services.FolderVideoScanner
 import com.nkls.nekovideo.components.helpers.DLNACastManager
 import com.nkls.nekovideo.components.helpers.FolderNavigationState
 import com.nkls.nekovideo.components.helpers.storage.StorageRoot
+import com.nkls.nekovideo.components.helpers.supportedVideoExtensions
 import com.nkls.nekovideo.theme.ThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -923,6 +926,9 @@ fun MainScreen(
     if (showPasswordDialog) {
         PasswordDialog(
             onDismiss = { showPasswordDialog = false },
+            // 第 7 轮：这一处是"进入/退出私密库"的开关 —— 输对密码直接推进，省掉再点一次「验证」；
+            // 输错保持静默（错误提示只由「验证」按钮给）。其余 5 个调用点不传，行为不变。
+            autoSubmitWhenCorrect = true,
             onFirstTimePasswordCreated = { pwd ->
                 if (BiometricHelper.isBiometricAvailable(context)) {
                     biometricOfferPassword = pwd
@@ -1438,8 +1444,23 @@ fun MainScreen(
                 composable("settings/storage/location") {
                     StorageLocationScreen()
                 }
-                composable("settings/beauty") {
-                    BeautySettingsScreen()
+                // 第 7 轮：同一个页面两种身份 —— 不带参数 = 全局设置；带 videoPath = 单个视频。
+                // ⚠️ 视频路径必须编码后再拼进路由（含 `/` 会破坏路由匹配）。
+                // ⚠️ Navigation Compose 取出参数时**已经自动解码**，这里拿到的是原始路径，
+                //    千万不要再 decode 一次（否则路径里的 % 会被二次解析，见计划 §九 P2-5）。
+                composable(
+                    route = "settings/beauty?videoPath={videoPath}",
+                    arguments = listOf(
+                        navArgument("videoPath") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        }
+                    )
+                ) { backStackEntry ->
+                    BeautySettingsScreen(
+                        videoPath = backStackEntry.arguments?.getString("videoPath")
+                    )
                 }
                 composable("settings/tags") {
                     TagsSettingsScreen()
@@ -1592,6 +1613,23 @@ fun MainScreen(
                                 SortRowMessageCenter.showInfo(context.getString(R.string.rescanning_videos))
                             }
                             ActionType.MANAGE_TAGS -> navController.navigate("settings/tags")
+                            // ===== 第 7 轮：美颜 =====
+                            // 未选中 → 全局设置页；恰好选中 1 个视频 → 该视频的设置页。
+                            // （选中文件夹 / 图片 / 多个时九宫格里这一项是**置灰**的，走不到这里；
+                            //   下面的判定既是兜底，也决定要不要把路径带进路由。）
+                            ActionType.BEAUTY -> {
+                                val target = selectedItems.singleOrNull()?.takeIf { path ->
+                                    File(path).isFile &&
+                                        File(path).extension.lowercase() in supportedVideoExtensions
+                                }
+                                if (target != null) {
+                                    navController.navigate(
+                                        "settings/beauty?videoPath=${Uri.encode(target)}"
+                                    )
+                                } else {
+                                    navController.navigate("settings/beauty")
+                                }
+                            }
                             // =====================================================
                             ActionType.UNLOCK -> { /* Removed - use MOVE instead */ }
                             ActionType.SECURE -> {
@@ -1790,9 +1828,15 @@ fun MainScreen(
                         }
                     },
                     // 工具箱里"需要先选中"的项（删除/重命名/移动/分享/标签）在未选中时置灰，
-                    // 点了给一句提示，免得用户以为界面坏了
-                    onDisabledActionClick = {
-                        SortRowMessageCenter.showInfo(context.getString(R.string.select_items_first))
+                    // 点了给一句提示，免得用户以为界面坏了。
+                    // 第 7 轮：美颜换成更准确的提示 —— "请先选中一个视频"（而不是"请先选中文件"）。
+                    onDisabledActionClick = { action ->
+                        val hintRes = if (action == ActionType.BEAUTY) {
+                            R.string.beauty_select_video_first
+                        } else {
+                            R.string.select_items_first
+                        }
+                        SortRowMessageCenter.showInfo(context.getString(hintRes))
                     }
                 )
                 }

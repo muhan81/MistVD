@@ -558,6 +558,11 @@
     <string name="beauty_only_this_video">仅此视频</string>
     <string name="beauty_only_this_video_desc">只对当前视频生效，其他视频仍用全局设置</string>
     <string name="beauty_reset">重置</string>
+    <string name="beauty_for_this_video">此视频美颜</string>
+    <string name="beauty_follow_global">跟随全局设置</string>
+    <string name="beauty_clear_this_video">改回跟随全局</string>
+    <string name="beauty_select_video_first">请先选中一个视频</string>
+    <string name="beauty_master_off_hint">总开关已关闭，调整已保存，开启后生效</string>
     <string name="beauty_presets">方案</string>
     <string name="beauty_save_preset">保存为方案</string>
     <string name="beauty_preset_name">方案名称</string>

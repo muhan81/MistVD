@@ -38,6 +38,7 @@ fun BeautyPanel(
     params: BeautyParams,
     onlyThisVideo: Boolean,
     hdrBlocked: Boolean,
+    masterEnabled: Boolean = true,
     onParamsCommit: (BeautyParams) -> Unit,
     onOnlyThisVideoChange: (Boolean) -> Unit,
     onReset: () -> Unit,
@@ -51,6 +52,18 @@ fun BeautyPanel(
         if (hdrBlocked) {
             Text(
                 text = stringResource(R.string.beauty_hdr_unsupported),
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // 第 7 轮（按业主裁决）：总开关关着也允许调整并保存，打开总开关后生效 ——
+        // 但必须说清楚"现在还不生效"，否则用户会以为调坏了。
+        if (!masterEnabled && !hdrBlocked && !draft.isDefault) {
+            Text(
+                text = stringResource(R.string.beauty_master_off_hint),
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,

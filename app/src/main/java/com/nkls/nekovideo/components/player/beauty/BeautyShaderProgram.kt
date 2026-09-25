@@ -20,6 +20,7 @@
 package com.nkls.nekovideo.components.player.beauty
 
 import android.opengl.GLES20
+import android.util.Log
 import androidx.media3.common.VideoFrameProcessingException
 import androidx.media3.common.util.GlProgram
 import androidx.media3.common.util.GlUtil
@@ -61,6 +62,10 @@ class BeautyShaderProgram(
     private val previousFbo = IntArray(1)
 
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
+        // ⚠️ 第 7 轮修正：Media3 在**分辨率变化时会重复调用 configure** —— 必须先释放上一轮的
+        //    GL 资源，否则每换一次分辨率就泄漏 2 个 program + 2 个纹理 + 2 个 FBO。
+        releaseGlResources()
+
         width = inputWidth
         height = inputHeight
 
@@ -86,8 +91,17 @@ class BeautyShaderProgram(
                 setBufferAttribute(ATTRIBUTE_TEX_COORD, GlUtil.getTextureCoordinateBounds(), COMPONENTS_PER_VERTEX)
             }
         } catch (e: GlUtil.GlException) {
+            Log.e(
+                "BeautyShaderProgram",
+                "[beauty] configure failed (${inputWidth}x$inputHeight, useHdr=$useHdr)", e
+            )
             throw VideoFrameProcessingException(e)
         }
+
+        Log.i(
+            "BeautyShaderProgram",
+            "[beauty] configure ${inputWidth}x$inputHeight useHdr=$useHdr smooth=$smooth sharpen=$sharpen"
+        )
 
         // 不缩放：输入多大输出多大。
         return Size(inputWidth, inputHeight)
@@ -118,11 +132,15 @@ class BeautyShaderProgram(
             GlUtil.focusFramebufferUsingCurrentContext(previousFbo[0], w, h)
             drawMix(inputTexId, texB, w, h)
         } catch (e: GlUtil.GlException) {
+            // ⚠️ 抛出去会让这一帧永远不输出（真机表现 = 画面卡死 / 转圈），
+            //    所以必须先留日志，别让排查只能靠猜。
+            Log.e("BeautyShaderProgram", "[beauty] drawFrame failed (${w}x$h)", e)
             throw VideoFrameProcessingException(e)
         }
     }
 
-    override fun release() {
+    /** 释放本轮 [configure] 建出来的 GL 资源。可重复调用（幂等）。 */
+    private fun releaseGlResources() {
         runCatching {
             blurProgram?.delete()
             mixProgram?.delete()
@@ -137,6 +155,10 @@ class BeautyShaderProgram(
         fboA = 0
         texB = 0
         fboB = 0
+    }
+
+    override fun release() {
+        releaseGlResources()
         super.release()
     }
 

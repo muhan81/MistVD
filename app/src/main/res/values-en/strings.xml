@@ -573,6 +573,11 @@
     <string name="beauty_only_this_video">This video only</string>
     <string name="beauty_only_this_video_desc">Applies to this video only; others use the global settings</string>
     <string name="beauty_reset">Reset</string>
+    <string name="beauty_for_this_video">Beauty for this video</string>
+    <string name="beauty_follow_global">Follow global settings</string>
+    <string name="beauty_clear_this_video">Follow global instead</string>
+    <string name="beauty_select_video_first">Select a video first</string>
+    <string name="beauty_master_off_hint">Beauty is off — changes are saved and apply once you turn it on</string>
     <string name="beauty_presets">Presets</string>
     <string name="beauty_save_preset">Save as preset</string>
     <string name="beauty_preset_name">Preset name</string>

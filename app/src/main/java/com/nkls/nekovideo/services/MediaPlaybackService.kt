@@ -65,6 +65,12 @@ class MediaPlaybackService : MediaSessionService() {
         const val ACTION_CLEAR_SLEEP_TIMER = "nekovideo.action.CLEAR_SLEEP_TIMER"
         const val ACTION_REQUEST_SLEEP_TIMER_STATE = "nekovideo.action.REQUEST_SLEEP_TIMER_STATE"
         const val ACTION_REFRESH_CURRENT_ARTWORK = "nekovideo.action.REFRESH_CURRENT_ARTWORK"
+        /**
+         * ★ 第 7 轮：请服务按"当前正在播放的视频"重新解析一遍美颜参数并立即应用。
+         * 用途：在**设置页**改了总开关 / 全局参数之后，若此时迷你播放器或后台播放还在跑，
+         * 需要一条即时生效的通路（播放器内的「仅此视频」面板有 MediaController，不走这条）。
+         */
+        const val ACTION_REFRESH_BEAUTY = "nekovideo.action.REFRESH_BEAUTY"
         const val ACTION_PERSIST_CONTINUE_WATCHING = "nekovideo.action.PERSIST_CONTINUE_WATCHING"
         const val ACTION_PAUSE_FOR_BACKGROUND = "nekovideo.action.PAUSE_FOR_BACKGROUND"
         const val EXTRA_SLEEP_TIMER_DURATION_MS = "sleep_timer_duration_ms"
@@ -217,6 +223,26 @@ class MediaPlaybackService : MediaSessionService() {
     private var activeSeekIndex: Int? = null
     private var trackedMediaItemUri: String? = null
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ★ 第 7 轮：美颜管线的"是否需要"状态（v1.19 黑屏 / 转圈回归的修复核心）
+    //
+    // 两个关键事实（读 Media3 1.7.1 源码实证，别凭记忆）：
+    //  ① MediaCodecVideoRenderer.onEnabled() 的判定是 `videoEffects != null`，**不是** `!isEmpty()`
+    //     ⇒ 传入**空列表**同样算"有特效"，照样把整条渲染切到 VideoGraph 管线
+    //       （getSurfaceForCodec() 改走 videoSink.getInputSurface()，解码器不再直连 PlayerView 的
+    //        Surface）。本机拿不到输出画面 ⇒ 黑屏 / 首帧永不到达（转圈）。
+    //  ② `hasSetVideoSink` 只在 renderer.onReset() 里复位，`setVideoEffects()` 方法体仅 3 行、
+    //     完全不碰它 ⇒ 一旦启用过，"关掉"也回不到非 VideoGraph 状态。
+    //
+    // ⇒ 两条铁律：**不需要特效时坚决不调 setVideoEffects**；**跨"启用/未启用"边界只能重建 player**。
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /** 建 player 时该套用的美颜参数。由 [prepareBeautyForPlaylist] 按"即将播放谁"算出。 */
+    private var pendingBeautyParams: BeautyParams = BeautyParams.DEFAULT
+
+    /** 当前 player 的 renderer 里是否**已经建了 VideoGraph**（= 曾用非空列表调过 setVideoEffects）。 */
+    private var beautyPipelineActive = false
+
     private fun createConfiguredPlayer(): ExoPlayer {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -233,37 +259,94 @@ class MediaPlaybackService : MediaSessionService() {
             .build().apply {
                 setAudioAttributes(audioAttributes, true)
                 addListener(playerListener)
-                // 第 6 轮美颜：setVideoEffects 必须在 prepare() 之前**至少调用一次**来建立
-                // 特效管线，之后才能在播放过程中动态改。这里先按当前保存的全局参数装一次
-                // （resolve(path = null) 即"全局参数"，总开关关闭时得到空列表 = 不启用）。
-                runCatching {
-                    setVideoEffects(
-                        BeautyEffects.build(
-                            BeautySettingsStore.resolve(this@MediaPlaybackService, null)
-                        )
-                    )
-                }.onFailure {
-                    Log.e("MediaPlaybackService", "initial setVideoEffects failed", it)
+                // ★ 第 7 轮修正：**只在真正需要特效时才调 setVideoEffects**。
+                // v1.19 在这里无条件调了一次；总开关关闭时传进去的是**空列表**，
+                // 而"空列表 ≠ 无特效"（见上方注释①）⇒ 未开美颜也切进了 VideoGraph ⇒ 黑屏。
+                // setVideoEffects 必须在 prepare() 之前调用才能建起管线，所以放在 build() 里。
+                beautyPipelineActive = false
+                if (!pendingBeautyParams.isDefault) {
+                    runCatching {
+                        setVideoEffects(BeautyEffects.build(pendingBeautyParams))
+                        beautyPipelineActive = true
+                    }.onFailure {
+                        beautyPipelineActive = false
+                        Log.e("MediaPlaybackService", "[beauty] setVideoEffects failed at build time", it)
+                    }
                 }
+                Log.i(
+                    "MediaPlaybackService",
+                    "[beauty] build player: pipeline=${if (beautyPipelineActive) "ON" else "off"} " +
+                        "params=$pendingBeautyParams"
+                )
             }
     }
 
     /**
-     * 应用美颜参数（第 6 轮）。
+     * ★ 第 7 轮：打开 / 切换视频前的"按需启用美颜"。
+     *
+     * **必须**在 `player?.run { clearMediaItems(); setMediaItems(...); prepare() }` **之前**调用：
+     * renderer 只在首次 `onEnabled()`（prepare 之后）决定要不要建 VideoGraph，所以要提前把
+     * `pendingBeautyParams` 与 player 都准备好。
+     *
+     * 只在**跨"启用 / 未启用"边界**时才重建 player；同边界内仅更新参数（零开销）。
+     * 本函数是"是否启用美颜"的**唯一权威**（见 [applyBeautyEffects] 的说明）。
+     */
+    private fun prepareBeautyForPlaylist(target: String?) {
+        val incoming = BeautySettingsStore.resolve(this, target)
+        pendingBeautyParams = incoming
+        val need = !incoming.isDefault
+        if (need == beautyPipelineActive) return
+
+        Log.i(
+            "MediaPlaybackService",
+            "[beauty] crossing boundary ($beautyPipelineActive -> $need) for '${target ?: "<global>"}', rebuild player"
+        )
+        player?.release()
+        player = createConfiguredPlayer()
+        // ⚠️ 必须同步换掉 MediaSession 持有的 player，否则已连接的 MediaController 会绑在
+        //    已 release 的旧实例上，UI 直接失灵。refreshPlayerWithCurrentState() 里同此处理。
+        mediaSession?.player = player!!
+    }
+
+    /**
+     * 应用美颜参数（第 6 轮功能，**第 7 轮重写**）。
      *
      * 之所以必须在这里做、而不是在界面层：`setVideoEffects` 是 **ExoPlayer 独有的方法**，
      * `MediaController` 上没有；而全项目只有这里持有真正的 ExoPlayer 实例。
      * 好处是主播放器 / 迷你播放器 / 画中画**一次全部生效**，不必逐个改。
      *
+     * 三分支（关键：**未启用时绝不调 API** —— 这正是 v1.19 的病根）：
+     *  - 两边都"未启用" → 直接 return，**一次 API 都不调**；
+     *  - 两边都"已启用" → 动态改数值，播放不中断；
+     *  - 跨边界 → 只能重建 player（`hasSetVideoSink` 无法复位）。
+     *
      * 失败只记日志、不抛 —— 特效装不上不应该影响正常播放。
      */
     private fun applyBeautyEffects(params: BeautyParams) {
-        val currentPlayer = player ?: return
-        runCatching {
-            currentPlayer.setVideoEffects(BeautyEffects.build(params))
-        }.onFailure {
-            Log.e("MediaPlaybackService", "applyBeautyEffects failed", it)
+        val p = BeautyParams.sanitize(params)
+        val need = !p.isDefault
+
+        if (need == beautyPipelineActive) {
+            if (!beautyPipelineActive) return   // ★ 未启用 ⇒ 绝不调 setVideoEffects
+            val currentPlayer = player ?: return
+            pendingBeautyParams = p
+            runCatching {
+                currentPlayer.setVideoEffects(BeautyEffects.build(p))
+            }.onFailure {
+                Log.e("MediaPlaybackService", "[beauty] dynamic setVideoEffects failed", it)
+            }
+            return
         }
+
+        // 跨边界：只记参数不起作用，必须重建 player 才能让 renderer 重新 onEnabled。
+        pendingBeautyParams = p
+        if (player == null || mediaSession == null || (player?.mediaItemCount ?: 0) == 0) {
+            // 空闲 / 未初始化：不白重建，等下一次 updatePlaylist 带着新参数建。
+            Log.i("MediaPlaybackService", "[beauty] boundary crossed while idle, defer to next playlist load")
+            return
+        }
+        Log.i("MediaPlaybackService", "[beauty] boundary crossed ($beautyPipelineActive -> $need), rebuild player")
+        refreshPlayerWithCurrentState()
     }
 
 
@@ -724,6 +807,17 @@ class MediaPlaybackService : MediaSessionService() {
             ACTION_REFRESH_CURRENT_ARTWORK -> {
                 scheduleCurrentPlaybackProcessing()
             }
+            ACTION_REFRESH_BEAUTY -> {
+                // ★ 第 7 轮：设置页改了总开关 / 全局参数后，让"当前正在播放的视频"立刻跟上。
+                // 路径取自 trackedMediaItemUri（updatePlaylist 里记录），拿不到再读当前媒体项。
+                // 若此刻没有在播的视频 ⇒ videoPath = null ⇒ resolve 回落全局参数，同样正确。
+                val uriStr = trackedMediaItemUri
+                    ?: player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                val videoPath = uriStr
+                    ?.removePrefix("locked://")
+                    ?.removePrefix("file://")
+                applyBeautyEffects(BeautySettingsStore.resolve(this, videoPath))
+            }
             ACTION_PERSIST_CONTINUE_WATCHING -> {
                 persistContinueWatchingState()
             }
@@ -805,6 +899,13 @@ class MediaPlaybackService : MediaSessionService() {
             initialPositionMs = initialPositionMs
         )
 
+        // ★ 第 7 轮：按需启用美颜 —— 必须早于 setMediaItems/prepare（见 prepareBeautyForPlaylist 注释）。
+        // 放在 isUpdatingMetadata = true 的区间内：重建 player 会触发 onMediaItemTransition，
+        // 跑到区间外会引出意外的元数据流程（会动到"继续观看"）。
+        if (playlist.isNotEmpty()) {
+            prepareBeautyForPlaylist(playlist.getOrNull(initialIndex))
+        }
+
         player?.run {
             clearMediaItems()
             setMediaItems(
@@ -830,6 +931,12 @@ class MediaPlaybackService : MediaSessionService() {
         pendingSeekIndex = null
         activeSeekIndex = null
         ContinueWatchingStore.setPlaybackActive(playlist.isNotEmpty())
+
+        // ★ 第 7 轮：删除后重排也会换"当前视频"，同样按需启用美颜
+        // （playlist 为空时下面 player?.run{} 内部会早退，这里就不折腾了）。
+        if (playlist.isNotEmpty()) {
+            prepareBeautyForPlaylist(playlist.getOrNull(nextIndex))
+        }
 
         player?.run {
             if (playlist.isEmpty()) {

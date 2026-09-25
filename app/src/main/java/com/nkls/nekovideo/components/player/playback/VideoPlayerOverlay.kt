@@ -2143,11 +2143,13 @@ fun VideoPlayerOverlay(
                         beautyParams = beautyParams,
                         beautyOnlyThisVideo = beautyOnlyThisVideo,
                         beautyHdrBlocked = beautyHdrBlocked,
+                        // 第 7 轮：面板据此提示"总开关关着 —— 调了会保存，开了才生效"
+                        beautyMasterEnabled = BeautySettingsStore.isEnabled(context),
                         onBeautyParamsCommit = { newParams ->
                             beautyParams = newParams
-                            // 用户主动调了参数说明就是想用 —— 顺手把总开关打开，
-                            // 否则"调了没反应"会很难理解。
-                            BeautySettingsStore.setEnabled(context, true)
+                            // 第 7 轮（业主裁决）：**不再**顺手打开总开关。
+                            // 总开关关着时照常保存参数，等用户自己打开总开关时即刻生效；
+                            // 面板里会显示 beauty_master_off_hint 说明这一点，不会让人误以为"调坏了"。
                             if (beautyOnlyThisVideo && currentVideoPath.isNotEmpty()) {
                                 BeautySettingsStore.setForVideo(context, currentVideoPath, newParams)
                             } else {

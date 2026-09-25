@@ -56,11 +56,27 @@ import com.nkls.nekovideo.components.helpers.BeautySettingsStore
  * 本页只负责"全局"，单视频参数在播放器面板里用「仅此视频」开关处理 —— 两者互不干扰。
  */
 @Composable
-fun BeautySettingsScreen() {
+fun BeautySettingsScreen(videoPath: String? = null) {
     val context = LocalContext.current
+    // 第 7 轮：同一个页面承担「全局」与「单个视频」两件事。
+    // perVideoPath 非空 = 从九宫格对某个视频点「美颜」进来的，参数读写全走单视频键。
+    val perVideoPath = videoPath?.takeIf { it.isNotBlank() }
 
     var enabled by remember { mutableStateOf(BeautySettingsStore.isEnabled(context)) }
-    var global by remember { mutableStateOf(BeautySettingsStore.getGlobal(context)) }
+    var global by remember(perVideoPath) {
+        mutableStateOf(
+            if (perVideoPath != null) {
+                // 没单独设过就先拿全局值当起点，用户一调就固化成"这个视频专属"
+                BeautySettingsStore.getForVideo(context, perVideoPath)
+                    ?: BeautySettingsStore.getGlobal(context)
+            } else {
+                BeautySettingsStore.getGlobal(context)
+            }
+        )
+    }
+    var hasPerVideo by remember(perVideoPath) {
+        mutableStateOf(perVideoPath != null && BeautySettingsStore.hasForVideo(context, perVideoPath))
+    }
     var presets by remember { mutableStateOf(BeautyPresetStore.getAll(context)) }
 
     // 命名对话框：新建与重命名共用一个（用 editingId 区分）。
@@ -75,9 +91,28 @@ fun BeautySettingsScreen() {
         presets = BeautyPresetStore.getAll(context)
     }
 
-    fun commitGlobal(params: BeautyParams) {
+    /**
+     * 写参数：单视频页写单视频键，全局页写全局键。
+     *
+     * ⚠️ 按业主裁决（第 7 轮 §2.6），这里**不会**顺手打开总开关 —— 关着就只是存下来，
+     * 等用户自己打开总开关时即刻生效。
+     */
+    fun commitParams(params: BeautyParams) {
         global = params
-        BeautySettingsStore.setGlobal(context, params)
+        if (perVideoPath != null) {
+            hasPerVideo = true
+            BeautySettingsStore.setForVideo(context, perVideoPath, params)
+        } else {
+            BeautySettingsStore.setGlobal(context, params)
+        }
+    }
+
+    /** 单视频页专用：放弃该视频的单独设置，改回跟随全局。 */
+    fun clearToGlobal() {
+        val path = perVideoPath ?: return
+        BeautySettingsStore.clearForVideo(context, path)
+        hasPerVideo = false
+        global = BeautySettingsStore.getGlobal(context)
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -90,6 +125,60 @@ fun BeautySettingsScreen() {
                 .padding(if (isCompact) 8.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp)
         ) {
+            // 单视频身份卡：说清楚这一页改的是哪个视频，并给出"改回跟随全局"的出口
+            if (perVideoPath != null) {
+                item {
+                    BeautyCard {
+                        Text(
+                            text = stringResource(R.string.beauty_for_this_video),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = java.io.File(perVideoPath).name,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                        if (hasPerVideo) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { clearToGlobal() }) {
+                                    Text(text = stringResource(R.string.beauty_clear_this_video))
+                                }
+                            }
+                        } else {
+                            // 还没单独设过 → 这一页的起点就是全局值；写清楚，免得用户以为在改全局
+                            Text(
+                                text = stringResource(R.string.beauty_follow_global),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 总开关关着但已经调过参数 → 提示"存下来了，开开关才生效"（第 7 轮 §2.6）
+            if (!enabled && !global.isDefault) {
+                item {
+                    BeautyCard {
+                        Text(
+                            text = stringResource(R.string.beauty_master_off_hint),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+
             item {
                 BeautyCard {
                     Row(
@@ -135,57 +224,57 @@ fun BeautySettingsScreen() {
                         label = stringResource(R.string.beauty_smooth),
                         value = global.smooth,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(smooth = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_whiten),
                         value = global.whiten,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(whiten = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_rosy),
                         value = global.rosy,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(rosy = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_sharpen),
                         value = global.sharpen,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(sharpen = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_brightness),
                         value = global.brightness,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(brightness = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_contrast),
                         value = global.contrast,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(contrast = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
                     BeautySlider(
                         label = stringResource(R.string.beauty_saturation),
                         value = global.saturation,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = enabled,
+                        enabled = true,
                         onValueChange = { global = global.copy(saturation = it) },
-                        onCommit = { commitGlobal(global) }
+                        onCommit = { commitParams(global) }
                     )
 
                     Row(
@@ -193,7 +282,7 @@ fun BeautySettingsScreen() {
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(
-                            onClick = { commitGlobal(BeautyParams.DEFAULT) },
+                            onClick = { commitParams(BeautyParams.DEFAULT) },
                             enabled = enabled
                         ) {
                             Text(text = stringResource(R.string.beauty_reset))
@@ -235,7 +324,7 @@ fun BeautySettingsScreen() {
                             fontSize = 13.sp,
                             modifier = Modifier.weight(1f)
                         )
-                        TextButton(onClick = { commitGlobal(preset.params) }) {
+                        TextButton(onClick = { commitParams(preset.params) }) {
                             Text(text = stringResource(R.string.beauty_preset_apply))
                         }
                         IconButton(

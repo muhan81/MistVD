@@ -575,6 +575,11 @@
     <string name="beauty_only_this_video">केवल यह वीडियो</string>
     <string name="beauty_only_this_video_desc">केवल इस वीडियो पर लागू; अन्य वैश्विक सेटिंग्स उपयोग करते हैं</string>
     <string name="beauty_reset">रीसेट</string>
+    <string name="beauty_for_this_video">इस वीडियो के लिए सौंदर्य</string>
+    <string name="beauty_follow_global">वैश्विक सेटिंग्स का पालन करें</string>
+    <string name="beauty_clear_this_video">वैश्विक सेटिंग्स पर लौटें</string>
+    <string name="beauty_select_video_first">पहले एक वीडियो चुनें</string>
+    <string name="beauty_master_off_hint">सौंदर्य बंद है — बदलाव सहेजे गए हैं और चालू करने पर लागू होंगे</string>
     <string name="beauty_presets">प्रीसेट</string>
     <string name="beauty_save_preset">प्रीसेट के रूप में सहेजें</string>
     <string name="beauty_preset_name">प्रीसेट का नाम</string>

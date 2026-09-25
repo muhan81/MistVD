@@ -169,6 +169,7 @@ fun CustomVideoControls(
     beautyParams: BeautyParams,
     beautyOnlyThisVideo: Boolean,
     beautyHdrBlocked: Boolean,
+    beautyMasterEnabled: Boolean,
     onBeautyParamsCommit: (BeautyParams) -> Unit,
     onBeautyOnlyThisVideoChange: (Boolean) -> Unit,
     onBeautyReset: () -> Unit,
@@ -199,6 +200,12 @@ fun CustomVideoControls(
         mutableStateOf(sleepTimerOptionsMs.indexOf(defaultSleepTimerDurationMs).coerceAtLeast(0).toFloat())
     }
     val actionDrawerScrollState = rememberScrollState()
+    // 第 7 轮：美颜面板状态提升到函数顶层 —— 底部魔法棒按钮与「更多操作」抽屉共用同一个入口。
+    // 原先声明在底部控制栏 Row 的 lambda 内部，抽屉那个作用域够不到它（编译能过、点了没反应）。
+    var showBeautyDialog by remember { mutableStateOf(false) }
+    // 从抽屉打开面板时记下"抽屉打开前是否在播放"，关闭面板后据此恢复（与「标签」项同一套做法）。
+    var resumeAfterBeautyDialog by remember { mutableStateOf(false) }
+    val beautySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val currentGlobalIndex = controller.currentMediaItemIndex
     val totalPlaylistSize = PlaylistManager.getTotalSize()
@@ -726,12 +733,12 @@ fun CustomVideoControls(
                                 )
                             }
 
-                            // Beauty（第 6 轮）
-                            var showBeautyDialog by remember { mutableStateOf(false) }
-                            val beautySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                            // Beauty（第 6 轮）— 面板状态已提升到函数顶层（第 7 轮），此处只留按钮
                             val beautyActive = !beautyParams.isDefault
                             IconButton(
                                 onClick = {
+                                    // 底部按钮这条路不由抽屉负责恢复播放，清掉可能残留的标记
+                                    resumeAfterBeautyDialog = false
                                     onBeautyDialogOpen()
                                     showBeautyDialog = true
                                 },
@@ -752,6 +759,11 @@ fun CustomVideoControls(
                                     onDismissRequest = {
                                         showBeautyDialog = false
                                         onBeautyDialogClose()
+                                        // 从抽屉进来的：面板关掉后把播放恢复回去（底部按钮路径下恒为 false）
+                                        if (resumeAfterBeautyDialog) {
+                                            controller.play()
+                                            resumeAfterBeautyDialog = false
+                                        }
                                     },
                                     sheetState = beautySheetState,
                                     title = stringResource(R.string.beauty_title),
@@ -761,6 +773,7 @@ fun CustomVideoControls(
                                         params = beautyParams,
                                         onlyThisVideo = beautyOnlyThisVideo,
                                         hdrBlocked = beautyHdrBlocked,
+                                        masterEnabled = beautyMasterEnabled,
                                         onParamsCommit = onBeautyParamsCommit,
                                         onOnlyThisVideoChange = onBeautyOnlyThisVideoChange,
                                         onReset = onBeautyReset
@@ -867,6 +880,22 @@ fun CustomVideoControls(
                                 val shouldResumeAfterTagsDialog = resumeAfterActionDrawer
                                 closeActionDrawer(shouldResumePlayback = false)
                                 onTagsClick(shouldResumeAfterTagsDialog)
+                                resetUITimer()
+                            }
+                        )
+
+                        // 第 7 轮：给「这一个视频」单独调美颜的入口（底部魔法棒按钮之外的第二个入口）
+                        DrawerActionItem(
+                            icon = Icons.Default.AutoFixHigh,
+                            label = stringResource(R.string.beauty_title),
+                            tint = CtrlIconOn,
+                            isActive = !beautyParams.isDefault,
+                            onClick = {
+                                val shouldResume = resumeAfterActionDrawer
+                                closeActionDrawer(shouldResumePlayback = false)
+                                resumeAfterBeautyDialog = shouldResume
+                                onBeautyDialogOpen()
+                                showBeautyDialog = true
                                 resetUITimer()
                             }
                         )

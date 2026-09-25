@@ -682,7 +682,9 @@ fun CreateFolderDialog(
 fun PasswordDialog(
     onDismiss: () -> Unit,
     onPasswordVerified: (String) -> Unit,
-    onFirstTimePasswordCreated: ((String) -> Unit)? = null
+    onFirstTimePasswordCreated: ((String) -> Unit)? = null,
+    // 第 7 轮：输对即进（仅"进入私密库"那一个调用点传 true，其余 5 处保持 default = 行为零变化）
+    autoSubmitWhenCorrect: Boolean = false
 ) {
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -732,6 +734,33 @@ fun PasswordDialog(
             } else {
                 errorMessage = "Invalid password"
             }
+        }
+    }
+
+    // 第 7 轮：输对即进（只在 autoSubmitWhenCorrect = true 时生效 —— 目前仅"进入私密库"那一处）。
+    //
+    // 三条硬约束：
+    // 1. **必须排除 isFirstTime** —— 首次设密码时若自动提交，会把第一个输入框的内容直接存成密码，
+    //    这是数据安全事故级的（顺带也绕开了 verifyPassword 里"没设过密码就返回 true"的空密码陷阱）；
+    // 2. **失败时什么都不做** —— 不设 errorMessage、不振动、不提示；错误提示只由「验证」按钮给；
+    // 3. 只在**手动输入态**生效（指纹界面不走这条路）。
+    //
+    // LaunchedEffect 的 key 里带 password：每敲一个字符就取消上一个协程并重开，
+    // 天然防抖，不需要额外写 debounce。
+    LaunchedEffect(password, autoSubmitWhenCorrect, showManualEntry) {
+        if (!autoSubmitWhenCorrect) return@LaunchedEffect
+        if (isFirstTime) return@LaunchedEffect
+        if (!showManualEntry) return@LaunchedEffect
+        if (isProcessing) return@LaunchedEffect
+        if (password.isBlank()) return@LaunchedEffect
+
+        delay(250)
+        val ok = withContext(Dispatchers.IO) {
+            FilesManager.SecureStorage.verifyPassword(context, password)
+        }
+        // 只处理成功：失败静默，让用户继续敲或自己点「验证」
+        if (ok) {
+            onPasswordVerified(password)
         }
     }
 

@@ -575,6 +575,11 @@
     <string name="beauty_only_this_video">Solo este vídeo</string>
     <string name="beauty_only_this_video_desc">Solo se aplica a este vídeo; los demás usan la configuración global</string>
     <string name="beauty_reset">Restablecer</string>
+    <string name="beauty_for_this_video">Belleza para este vídeo</string>
+    <string name="beauty_follow_global">Seguir la configuración global</string>
+    <string name="beauty_clear_this_video">Volver a la configuración global</string>
+    <string name="beauty_select_video_first">Selecciona primero un vídeo</string>
+    <string name="beauty_master_off_hint">Belleza desactivada: los ajustes se guardan y se aplican al activarla</string>
     <string name="beauty_presets">Preajustes</string>
     <string name="beauty_save_preset">Guardar como preajuste</string>
     <string name="beauty_preset_name">Nombre del preajuste</string>

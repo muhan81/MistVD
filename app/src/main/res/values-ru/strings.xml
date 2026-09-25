@@ -583,6 +583,11 @@
     <string name="beauty_only_this_video">Только это видео</string>
     <string name="beauty_only_this_video_desc">Применяется только к этому видео; остальные используют общие настройки</string>
     <string name="beauty_reset">Сбросить</string>
+    <string name="beauty_for_this_video">Красота для этого видео</string>
+    <string name="beauty_follow_global">Следовать общим настройкам</string>
+    <string name="beauty_clear_this_video">Вернуться к общим настройкам</string>
+    <string name="beauty_select_video_first">Сначала выберите видео</string>
+    <string name="beauty_master_off_hint">Красота выключена — изменения сохранены и вступят в силу после включения</string>
     <string name="beauty_presets">Пресеты</string>
     <string name="beauty_save_preset">Сохранить как пресет</string>
     <string name="beauty_preset_name">Название пресета</string>
