@@ -41,8 +41,13 @@ import com.nkls.nekovideo.components.helpers.ContinueWatchingEntry
 import com.nkls.nekovideo.components.helpers.ContinueWatchingTrackPreference
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.nkls.nekovideo.components.helpers.BeautySettingsStore
+import com.nkls.nekovideo.components.helpers.logging.TaskLogger
 import com.nkls.nekovideo.components.player.beauty.BeautyEffects
 import com.nkls.nekovideo.components.player.beauty.BeautyParams
+// 第 8 轮：渲染侧观测（AnalyticsListener 是排查"黑屏/转圈"的关键，见本文件 analyticsListener）
+import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.DecoderReuseEvaluation
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 
 @OptIn(UnstableApi::class)
 class MediaPlaybackService : MediaSessionService() {
@@ -243,6 +248,31 @@ class MediaPlaybackService : MediaSessionService() {
     /** 当前 player 的 renderer 里是否**已经建了 VideoGraph**（= 曾用非空列表调过 setVideoEffects）。 */
     private var beautyPipelineActive = false
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 第 8 轮：日志辅助
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * 美颜参数的"日志文本"。
+     *
+     * **刻意不用 data class 自带的 `toString()`** —— 虽然 Kotlin 生成的 toString 里字段名是
+     * 字符串字面量（R8 不会改），但一旦将来有人覆写 toString 或改用反射，日志格式就会在
+     * release 包里悄悄变样（类名被混淆）。这里显式拼一份，保证**任何构建类型下日志格式稳定**，
+     * 否则"日志看不懂"会把排查带进沟里。
+     */
+    private fun BeautyParams.logText(): String =
+        "smooth=$smooth,whiten=$whiten,rosy=$rosy,sharpen=$sharpen," +
+            "bright=$brightness,contrast=$contrast,sat=$saturation"
+
+    /** 播放状态常量转可读名 —— 日志里写数字等于没写。 */
+    private fun stateName(state: Int): String = when (state) {
+        Player.STATE_IDLE -> "IDLE"
+        Player.STATE_BUFFERING -> "BUFFERING"
+        Player.STATE_READY -> "READY"
+        Player.STATE_ENDED -> "ENDED"
+        else -> "?#$state"
+    }
+
     private fun createConfiguredPlayer(): ExoPlayer {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -259,24 +289,47 @@ class MediaPlaybackService : MediaSessionService() {
             .build().apply {
                 setAudioAttributes(audioAttributes, true)
                 addListener(playerListener)
+                // ★ 第 8 轮：渲染侧观测（解码器 / 输入格式 / 丢帧）。
+                //   放在这里而不是 onCreate —— 重建出来的 player 也必须带上这两组监听，
+                //   否则"重建之后的那次播放"就是观测盲区，恰好是美颜场景最需要看的一段。
+                addAnalyticsListener(analyticsListener)
                 // ★ 第 7 轮修正：**只在真正需要特效时才调 setVideoEffects**。
                 // v1.19 在这里无条件调了一次；总开关关闭时传进去的是**空列表**，
                 // 而"空列表 ≠ 无特效"（见上方注释①）⇒ 未开美颜也切进了 VideoGraph ⇒ 黑屏。
                 // setVideoEffects 必须在 prepare() 之前调用才能建起管线，所以放在 build() 里。
                 beautyPipelineActive = false
                 if (!pendingBeautyParams.isDefault) {
+                    val effects = runCatching { BeautyEffects.build(pendingBeautyParams) }
+                        .getOrElse { emptyList() }
+                    TaskLogger.i(
+                        TaskLogger.Channel.BEAUTY, "setVideoEffects.start",
+                        "at=build effects=${effects.size} params=${pendingBeautyParams.logText()}"
+                    )
                     runCatching {
-                        setVideoEffects(BeautyEffects.build(pendingBeautyParams))
+                        setVideoEffects(effects)
                         beautyPipelineActive = true
                     }.onFailure {
                         beautyPipelineActive = false
-                        Log.e("MediaPlaybackService", "[beauty] setVideoEffects failed at build time", it)
+                        TaskLogger.e(TaskLogger.Channel.BEAUTY, "setVideoEffects.failed", it)
                     }
+                    TaskLogger.i(
+                        TaskLogger.Channel.BEAUTY, "setVideoEffects.done",
+                        "at=build ok=$beautyPipelineActive effects=${effects.size} " +
+                            "pipeline=${if (beautyPipelineActive) "on" else "off"} " +
+                            "params=${pendingBeautyParams.logText()}"
+                    )
+                } else {
+                    // "什么都没做"也必须留证据：否则日志里"没出现 setVideoEffects"
+                    // 无法区分"故意跳过"与"代码没跑到"。
+                    TaskLogger.i(
+                        TaskLogger.Channel.BEAUTY, "setVideoEffects.skip",
+                        "at=build reason=paramsDefault (★ 未启用就一次 API 都不调，避免切进 VideoGraph)"
+                    )
                 }
-                Log.i(
-                    "MediaPlaybackService",
-                    "[beauty] build player: pipeline=${if (beautyPipelineActive) "ON" else "off"} " +
-                        "params=$pendingBeautyParams"
+                TaskLogger.d(
+                    TaskLogger.Channel.PLAYER, "player.created",
+                    "pipeline=${if (beautyPipelineActive) "on" else "off"} " +
+                        "params=${pendingBeautyParams.logText()}"
                 )
             }
     }
@@ -295,17 +348,34 @@ class MediaPlaybackService : MediaSessionService() {
         val incoming = BeautySettingsStore.resolve(this, target)
         pendingBeautyParams = incoming
         val need = !incoming.isDefault
-        if (need == beautyPipelineActive) return
+        // ★ 第 8 轮：这是"要不要建特效管线"的决策点，四个值一起记 —— 缺任何一个都无法判定。
+        TaskLogger.i(
+            TaskLogger.Channel.BEAUTY, "prepareForPlaylist",
+            "target=${target ?: "<global>"} need=$need active=$beautyPipelineActive " +
+                "masterEnabled=${BeautySettingsStore.isEnabled(this)} params=${incoming.logText()}"
+        )
+        if (need == beautyPipelineActive) {
+            TaskLogger.d(
+                TaskLogger.Channel.BEAUTY, "prepareForPlaylist.noRebuild",
+                "need==active=$need ⇒ 同边界内不重建，仅参数生效"
+            )
+            return
+        }
 
-        Log.i(
-            "MediaPlaybackService",
-            "[beauty] crossing boundary ($beautyPipelineActive -> $need) for '${target ?: "<global>"}', rebuild player"
+        TaskLogger.w(
+            TaskLogger.Channel.BEAUTY, "player.rebuild",
+            "trigger=prepareBeautyForPlaylist $beautyPipelineActive->$need " +
+                "target=${target ?: "<global>"}"
         )
         player?.release()
         player = createConfiguredPlayer()
         // ⚠️ 必须同步换掉 MediaSession 持有的 player，否则已连接的 MediaController 会绑在
         //    已 release 的旧实例上，UI 直接失灵。refreshPlayerWithCurrentState() 里同此处理。
         mediaSession?.player = player!!
+        TaskLogger.d(
+            TaskLogger.Channel.PLAYER, "session.playerSwapped",
+            "owner=prepareBeautyForPlaylist"
+        )
     }
 
     /**
@@ -325,16 +395,41 @@ class MediaPlaybackService : MediaSessionService() {
     private fun applyBeautyEffects(params: BeautyParams) {
         val p = BeautyParams.sanitize(params)
         val need = !p.isDefault
+        TaskLogger.i(
+            TaskLogger.Channel.BEAUTY, "apply",
+            "need=$need active=$beautyPipelineActive params=${p.logText()}"
+        )
 
         if (need == beautyPipelineActive) {
-            if (!beautyPipelineActive) return   // ★ 未启用 ⇒ 绝不调 setVideoEffects
-            val currentPlayer = player ?: return
-            pendingBeautyParams = p
-            runCatching {
-                currentPlayer.setVideoEffects(BeautyEffects.build(p))
-            }.onFailure {
-                Log.e("MediaPlaybackService", "[beauty] dynamic setVideoEffects failed", it)
+            if (!beautyPipelineActive) {
+                // ★ 未启用 ⇒ 绝不调 setVideoEffects（这正是 v1.19 的病根）。
+                //   "什么都没做"也要留证据，否则日志里无法区分"故意没调"与"代码没跑到"。
+                TaskLogger.d(
+                    TaskLogger.Channel.BEAUTY, "setVideoEffects.skip",
+                    "at=apply reason=bothDisabled (★ 一次 API 都不调)"
+                )
+                return
             }
+            val currentPlayer = player
+            if (currentPlayer == null) {
+                TaskLogger.w(TaskLogger.Channel.BEAUTY, "apply.noPlayer", "player==null，参数已存待下次生效")
+                return
+            }
+            pendingBeautyParams = p
+            val effects = runCatching { BeautyEffects.build(p) }.getOrElse { emptyList() }
+            TaskLogger.i(
+                TaskLogger.Channel.BEAUTY, "setVideoEffects.start",
+                "at=apply-dynamic effects=${effects.size} params=${p.logText()}"
+            )
+            runCatching {
+                currentPlayer.setVideoEffects(effects)
+            }.onFailure {
+                TaskLogger.e(TaskLogger.Channel.BEAUTY, "setVideoEffects.failed", it)
+            }
+            TaskLogger.i(
+                TaskLogger.Channel.BEAUTY, "setVideoEffects.done",
+                "at=apply-dynamic effects=${effects.size} pipeline=on params=${p.logText()}"
+            )
             return
         }
 
@@ -342,16 +437,24 @@ class MediaPlaybackService : MediaSessionService() {
         pendingBeautyParams = p
         if (player == null || mediaSession == null || (player?.mediaItemCount ?: 0) == 0) {
             // 空闲 / 未初始化：不白重建，等下一次 updatePlaylist 带着新参数建。
-            Log.i("MediaPlaybackService", "[beauty] boundary crossed while idle, defer to next playlist load")
+            TaskLogger.i(
+                TaskLogger.Channel.BEAUTY, "apply.deferred",
+                "boundary $beautyPipelineActive->$need 但 player 空闲，推迟到下次 updatePlaylist"
+            )
             return
         }
-        Log.i("MediaPlaybackService", "[beauty] boundary crossed ($beautyPipelineActive -> $need), rebuild player")
+        TaskLogger.w(
+            TaskLogger.Channel.BEAUTY, "player.rebuild",
+            "trigger=applyBeautyEffects(crossing) $beautyPipelineActive->$need"
+        )
         refreshPlayerWithCurrentState()
     }
 
 
     override fun onCreate() {
         super.onCreate()
+
+        TaskLogger.i(TaskLogger.Channel.PLAYER, "service.onCreate")
 
         player = createConfiguredPlayer()
 
@@ -462,17 +565,22 @@ class MediaPlaybackService : MediaSessionService() {
                 // 第 6 轮美颜：界面把 7 个参数打包下发，这里直接重建特效链。
                 // 界面侧已保证"松手才提交一次"，所以此处不必再做防抖。
                 COMMAND_SET_BEAUTY -> {
-                    applyBeautyEffects(
-                        BeautyParams(
-                            smooth = args.getFloat(EXTRA_BEAUTY_SMOOTH, 0f),
-                            whiten = args.getFloat(EXTRA_BEAUTY_WHITEN, 0f),
-                            rosy = args.getFloat(EXTRA_BEAUTY_ROSY, 0f),
-                            sharpen = args.getFloat(EXTRA_BEAUTY_SHARPEN, 0f),
-                            brightness = args.getFloat(EXTRA_BEAUTY_BRIGHTNESS, 0f),
-                            contrast = args.getFloat(EXTRA_BEAUTY_CONTRAST, 0f),
-                            saturation = args.getFloat(EXTRA_BEAUTY_SATURATION, 0f)
-                        )
+                    val incoming = BeautyParams(
+                        smooth = args.getFloat(EXTRA_BEAUTY_SMOOTH, 0f),
+                        whiten = args.getFloat(EXTRA_BEAUTY_WHITEN, 0f),
+                        rosy = args.getFloat(EXTRA_BEAUTY_ROSY, 0f),
+                        sharpen = args.getFloat(EXTRA_BEAUTY_SHARPEN, 0f),
+                        brightness = args.getFloat(EXTRA_BEAUTY_BRIGHTNESS, 0f),
+                        contrast = args.getFloat(EXTRA_BEAUTY_CONTRAST, 0f),
+                        saturation = args.getFloat(EXTRA_BEAUTY_SATURATION, 0f)
                     )
+                    // ★ 第 8 轮：命令**到达**这件事本身是最重要的证据之一 ——
+                    //   日志里没有这一行，就说明问题在界面侧（压根没下发），不必再往渲染层查。
+                    TaskLogger.i(
+                        TaskLogger.Channel.UI, "command.setBeauty",
+                        "params=${incoming.logText()}"
+                    )
+                    applyBeautyEffects(incoming)
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
             }
@@ -485,6 +593,12 @@ class MediaPlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            // ★ 第 8 轮：errorCode 与因果链一起记 —— 只有 message 常常看不出是哪一类失败。
+            TaskLogger.e(
+                TaskLogger.Channel.ERROR, "onPlayerError",
+                "code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} " +
+                    "cause=${error.cause?.javaClass?.name}:${error.cause?.message}"
+            )
             Log.e("MediaPlaybackService", "Player error: ${error.message}")
         }
 
@@ -543,6 +657,12 @@ class MediaPlaybackService : MediaSessionService() {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            // ★ 第 8 轮：以前这里只发广播、不进日志 —— 排查时看不到"卡在 BUFFERING"这类关键事实。
+            TaskLogger.i(
+                TaskLogger.Channel.PLAYER, "playbackState",
+                "state=${stateName(playbackState)} index=${player?.currentMediaItemIndex ?: -1} " +
+                    "pipeline=${if (beautyPipelineActive) "on" else "off"}"
+            )
             val isPlaying = player?.isPlaying ?: false
             val intent = Intent("PLAYBACK_STATE_CHANGED")
             intent.putExtra("IS_PLAYING", isPlaying)
@@ -580,6 +700,7 @@ class MediaPlaybackService : MediaSessionService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            TaskLogger.d(TaskLogger.Channel.PLAYER, "isPlayingChanged", "isPlaying=$isPlaying")
             if (isPlaying) {
                 scheduleProgressPersistence()
             } else {
@@ -590,6 +711,85 @@ class MediaPlaybackService : MediaSessionService() {
 
         override fun onTracksChanged(tracks: Tracks) {
             applyPendingContinueWatchingRestore(tracks)
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // ★ 第 8 轮新增：这三个回调是「黑屏 / 转圈」的**唯一直接判据**。
+        //   以前整个项目一个都没注册 —— 所以"到底有没有画面"根本无从判断，
+        //   这正是"开启美颜后无法播放"排查中最大的观测盲区。
+        // ─────────────────────────────────────────────────────────────────
+
+        /** ★ 首帧到达。**日志里没有这一行 = 就是黑屏/转圈。** */
+        override fun onRenderedFirstFrame() {
+            TaskLogger.i(TaskLogger.Channel.RENDER, "onRenderedFirstFrame", "★ 首帧已到达")
+        }
+
+        /** 视频自身尺寸。VideoGraph 接不上时，这个事件往往也不出现。 */
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            TaskLogger.i(
+                TaskLogger.Channel.RENDER, "onVideoSizeChanged",
+                "w=${videoSize.width} h=${videoSize.height} " +
+                    "par=${videoSize.pixelWidthHeightRatio} " +
+                    "rotation=${videoSize.unappliedRotationDegrees}"
+            )
+        }
+
+        /** 输出 surface 尺寸。一直是 0x0 / 一直不出现 ⇒ 解码结果没有可写的目标面。 */
+        override fun onSurfaceSizeChanged(width: Int, height: Int) {
+            TaskLogger.i(TaskLogger.Channel.RENDER, "onSurfaceSizeChanged", "w=$width h=$height")
+        }
+    }
+
+    /**
+     * ★ 第 8 轮新增：渲染侧观测（`AnalyticsListener`）。
+     *
+     * `Player.Listener` 只能告诉你"首帧到没到"，但**不告诉你解码器是谁、输入格式是什么、丢没丢帧**。
+     * 排查黑屏/转圈时，这三样决定了问题出在**解码器**还是**特效链**：
+     * 解码器正常起来、格式也识别了，却始终没有首帧 ⇒ 嫌疑就集中到 VideoGraph / 输出 surface 那一段。
+     *
+     * ⚠️ `AnalyticsListener` 是 `@UnstableApi`；本类已带 `@OptIn(UnstableApi::class)`，无需额外注解。
+     */
+    private val analyticsListener = object : AnalyticsListener {
+
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long
+        ) {
+            TaskLogger.i(
+                TaskLogger.Channel.RENDER, "decoderInitialized",
+                "name=$decoderName initMs=$initializationDurationMs"
+            )
+        }
+
+        override fun onVideoInputFormatChanged(
+            eventTime: AnalyticsListener.EventTime,
+            format: Format,
+            decoderReuseEvaluation: DecoderReuseEvaluation?
+        ) {
+            TaskLogger.i(
+                TaskLogger.Channel.RENDER, "videoInputFormat",
+                "mime=${format.sampleMimeType} ${format.width}x${format.height} " +
+                    "colorTransfer=${format.colorInfo?.colorTransfer} " +
+                    "colorSpace=${format.colorInfo?.colorSpace} " +
+                    "hdrStaticInfo=${if (format.colorInfo?.hdrStaticInfo != null) "yes" else "no"}"
+            )
+        }
+
+        override fun onVideoDecoderReleased(eventTime: AnalyticsListener.EventTime, decoderName: String) {
+            TaskLogger.i(TaskLogger.Channel.RENDER, "decoderReleased", "name=$decoderName")
+        }
+
+        override fun onDroppedVideoFrames(
+            eventTime: AnalyticsListener.EventTime,
+            droppedFrames: Int,
+            elapsedMs: Long
+        ) {
+            TaskLogger.d(
+                TaskLogger.Channel.RENDER, "droppedFrames",
+                "dropped=$droppedFrames elapsedMs=$elapsedMs"
+            )
         }
     }
 
@@ -889,6 +1089,13 @@ class MediaPlaybackService : MediaSessionService() {
     }
 
     private fun updatePlaylist(playlist: List<String>, initialIndex: Int, initialPositionMs: Long = 0L) {
+        // ★ 第 8 轮：这才是"打开视频"的**真正入口**（不是 createConfiguredPlayer）。
+        //   记下来才能判断"美颜管线到底在哪一步被决定、是不是每次开视频都重建"。
+        TaskLogger.i(
+            TaskLogger.Channel.PLAYER, "updatePlaylist",
+            "size=${playlist.size} index=$initialIndex posMs=$initialPositionMs " +
+                "target=${playlist.getOrNull(initialIndex)}"
+        )
         isUpdatingMetadata = true // ✅ Evita processamento de onMediaItemTransition
         pendingSeekIndex = null
         activeSeekIndex = null
@@ -927,6 +1134,10 @@ class MediaPlaybackService : MediaSessionService() {
     }
 
     private fun updatePlaylistAfterDeletion(playlist: List<String>, nextIndex: Int) {
+        TaskLogger.i(
+            TaskLogger.Channel.PLAYER, "updatePlaylistAfterDeletion",
+            "size=${playlist.size} nextIndex=$nextIndex target=${playlist.getOrNull(nextIndex)}"
+        )
         isUpdatingMetadata = true // ✅ Evita processamento de onMediaItemTransition
         pendingSeekIndex = null
         activeSeekIndex = null
@@ -1190,6 +1401,12 @@ class MediaPlaybackService : MediaSessionService() {
         val currentPlayer = player ?: return
         val currentSession = mediaSession ?: return
 
+        TaskLogger.w(
+            TaskLogger.Channel.PLAYER, "player.rebuild",
+            "trigger=refreshPlayerWithCurrentState index=${currentPlayer.currentMediaItemIndex} " +
+                "posMs=${currentPlayer.currentPosition} count=${currentPlayer.mediaItemCount}"
+        )
+
         isUpdatingMetadata = true // ✅ Evita processamento de onMediaItemTransition
         pendingSeekIndex = null
         activeSeekIndex = null
@@ -1214,6 +1431,11 @@ class MediaPlaybackService : MediaSessionService() {
         }
 
         currentSession.player = player!!
+
+        TaskLogger.d(
+            TaskLogger.Channel.PLAYER, "session.playerSwapped",
+            "owner=refreshPlayerWithCurrentState"
+        )
 
         player?.run {
             if (currentPlaylist.isNotEmpty()) {

@@ -27,6 +27,7 @@ import androidx.media3.common.util.GlUtil
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BaseGlShaderProgram
+import com.nkls.nekovideo.components.helpers.logging.TaskLogger
 
 /**
  * 三趟渲染：
@@ -61,6 +62,9 @@ class BeautyShaderProgram(
     /** 父类在调用 drawFrame 前绑定好的输出 FBO，第三趟要切回去。 */
     private val previousFbo = IntArray(1)
 
+    /** 第 8 轮：帧计数。**只在第 1 帧记日志**，之后不再逐帧写（GL 线程高频调用，刷日志会拖慢渲染）。 */
+    private var frameCount = 0L
+
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         // ⚠️ 第 7 轮修正：Media3 在**分辨率变化时会重复调用 configure** —— 必须先释放上一轮的
         //    GL 资源，否则每换一次分辨率就泄漏 2 个 program + 2 个纹理 + 2 个 FBO。
@@ -91,6 +95,12 @@ class BeautyShaderProgram(
                 setBufferAttribute(ATTRIBUTE_TEX_COORD, GlUtil.getTextureCoordinateBounds(), COMPONENTS_PER_VERTEX)
             }
         } catch (e: GlUtil.GlException) {
+            // 着色器编译/链接失败 = 候选根因 H3；GLSL 报错必须先落到诊断日志里。
+            TaskLogger.e(
+                TaskLogger.Channel.GL, "gl.error",
+                "stage=configure size=${inputWidth}x$inputHeight useHdr=$useHdr msg=${e.message}"
+            )
+            TaskLogger.logStackTrace(TaskLogger.Channel.GL, "gl.error.configure", e)
             Log.e(
                 "BeautyShaderProgram",
                 "[beauty] configure failed (${inputWidth}x$inputHeight, useHdr=$useHdr)", e
@@ -98,6 +108,16 @@ class BeautyShaderProgram(
             throw VideoFrameProcessingException(e)
         }
 
+        // ★ 第 8 轮：着色器第一次 configure 时 GL 上下文正好是绑定的，借机把**真实** GL 环境
+        //   记下来（会话头里只有 ActivityManager 报的 GLES 版本号，拿不到 vendor/renderer）。
+        //   GPU 驱动兼容类问题全靠这一行定位。
+        logGlEnvironmentIfNeeded()
+
+        TaskLogger.i(
+            TaskLogger.Channel.GL, "configure",
+            "size=${inputWidth}x$inputHeight useHdr=$useHdr smooth=$smooth sharpen=$sharpen " +
+                "output=${inputWidth}x$inputHeight"
+        )
         Log.i(
             "BeautyShaderProgram",
             "[beauty] configure ${inputWidth}x$inputHeight useHdr=$useHdr smooth=$smooth sharpen=$sharpen"
@@ -111,7 +131,23 @@ class BeautyShaderProgram(
         val w = width
         val h = height
         if (w <= 0 || h <= 0) {
+            // 尺寸没准备好就静默丢帧是危险的 —— 真机表现是"没画面、日志却干净"。
+            // 只在第一帧记一次，避免刷屏。
+            if (frameCount == 0L) {
+                TaskLogger.w(
+                    TaskLogger.Channel.GL, "drawFrame.skipped",
+                    "size=${w}x$h (configure 尚未给出有效尺寸)"
+                )
+            }
             return
+        }
+
+        frameCount++
+        if (frameCount == 1L) {
+            TaskLogger.i(
+                TaskLogger.Channel.GL, "drawFrame.first",
+                "size=${w}x$h presentationTimeUs=$presentationTimeUs ⇒ 着色器已跑通第一帧"
+            )
         }
 
         try {
@@ -134,6 +170,10 @@ class BeautyShaderProgram(
         } catch (e: GlUtil.GlException) {
             // ⚠️ 抛出去会让这一帧永远不输出（真机表现 = 画面卡死 / 转圈），
             //    所以必须先留日志，别让排查只能靠猜。
+            TaskLogger.e(
+                TaskLogger.Channel.GL, "gl.error",
+                "stage=drawFrame size=${w}x$h frame=$frameCount msg=${e.message}"
+            )
             Log.e("BeautyShaderProgram", "[beauty] drawFrame failed (${w}x$h)", e)
             throw VideoFrameProcessingException(e)
         }
@@ -158,8 +198,32 @@ class BeautyShaderProgram(
     }
 
     override fun release() {
+        TaskLogger.d(TaskLogger.Channel.GL, "release", "frames=$frameCount")
         releaseGlResources()
         super.release()
+    }
+
+    /**
+     * 只在**第一次** configure 时记一遍真实 GL 环境。
+     *
+     * 为什么必须在这里记：`GLES20.glGetString` 只能在**有 GL 上下文的线程**上调用，
+     * 而会话头是主线程写的（那时没有上下文，只能拿到 `ActivityManager` 报的 GLES 版本号）。
+     * 着色器第一次 configure 恰好落在 Media3 的 GL 线程、上下文已绑定 —— 零额外成本的时点。
+     */
+    private fun logGlEnvironmentIfNeeded() {
+        if (glEnvLogged) return
+        glEnvLogged = true
+        try {
+            val vendor = GLES20.glGetString(GLES20.GL_VENDOR)
+            val renderer = GLES20.glGetString(GLES20.GL_RENDERER)
+            val version = GLES20.glGetString(GLES20.GL_VERSION)
+            TaskLogger.i(
+                TaskLogger.Channel.ENV, "gl.environment",
+                "vendor=$vendor renderer=$renderer version=$version useHdr=$useHdr"
+            )
+        } catch (_: Throwable) {
+            TaskLogger.w(TaskLogger.Channel.ENV, "gl.environment", "读取 glGetString 失败")
+        }
     }
 
     /** 一趟可分离盒式模糊。[stepX] / [stepY] 决定方向（横趟只给 X，竖趟只给 Y）。 */
@@ -191,6 +255,14 @@ class BeautyShaderProgram(
     }
 
     private companion object {
+        /**
+         * 第 8 轮：GL 环境只在**第一次** configure 时记一遍（见 [logGlEnvironmentIfNeeded]）。
+         * 放 companion 而非实例字段 —— 进程内通常只有一个 GL 上下文，
+         * 每次重建 player 都刷一遍同样的信息没有意义。
+         */
+        @Volatile
+        var glEnvLogged = false
+
         const val ATTRIBUTE_POSITION = "aPosition"
         const val ATTRIBUTE_TEX_COORD = "aTexCoord"
         const val UNIFORM_TEX_SAMPLER = "uTexSampler"

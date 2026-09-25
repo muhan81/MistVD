@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
@@ -318,6 +319,18 @@ fun SettingsScreen(navController: NavController) {
                     title = stringResource(R.string.settings_security),
                     subtitle = stringResource(R.string.settings_security_desc),
                     onClick = { navController.navigate("settings/security") },
+                    isCompact = isCompact
+                )
+            }
+
+            item {
+                // 第 8 轮：运行日志（诊断）。放在"关于"之前 —— 它属于排查/支持类，
+                // 与"关于"同组，但比"关于"更高频（出问题时要第一时间找到）。
+                SettingsCategoryCard(
+                    icon = Icons.Default.Description,
+                    title = stringResource(R.string.settings_logs),
+                    subtitle = stringResource(R.string.settings_logs_desc),
+                    onClick = { navController.navigate("settings/logs") },
                     isCompact = isCompact
                 )
             }
@@ -1210,7 +1223,7 @@ private fun RenderSecuritySettingItem(
 }
 
 @Composable
-fun AboutSettingsScreen() {
+fun AboutSettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
@@ -1283,6 +1296,17 @@ fun AboutSettingsScreen() {
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        // 第 8 轮：运行日志快捷入口。与"报告问题"并列 —— 真去反馈时往往正需要附上日志。
+        // （设置主页也有一张卡片，这里是第二条路径，九宫格工具箱是第三条。）
+        SettingsClickableItem(
+            icon = Icons.Default.Description,
+            title = stringResource(R.string.settings_logs),
+            subtitle = stringResource(R.string.settings_logs_desc),
+            onClick = { navController.navigate("settings/logs") }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         SettingsClickableItem(
             icon = Icons.Default.BugReport,

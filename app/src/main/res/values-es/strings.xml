@@ -590,4 +590,19 @@
     <string name="beauty_preset_delete_title">¿Eliminar el preajuste?</string>
     <string name="beauty_hdr_unsupported">Este vídeo es HDR; la belleza no está disponible</string>
     <string name="beauty_confirm">Confirmar</string>
+    <string name="settings_logs">Registro de ejecución</string>
+    <string name="settings_logs_desc">Registra eventos de ejecución para diagnóstico</string>
+    <string name="logs_title">Registro de ejecución</string>
+    <string name="logs_level">Nivel de registro</string>
+    <string name="logs_export">Exportar a archivo</string>
+    <string name="logs_share">Compartir</string>
+    <string name="logs_copy">Copiar</string>
+    <string name="logs_clear">Borrar</string>
+    <string name="logs_clear_confirm_title">¿Borrar los registros?</string>
+    <string name="logs_clear_confirm_msg">Se eliminarán los archivos de registro guardados en este dispositivo. Los vídeos, contraseñas y otros datos no se ven afectados.</string>
+    <string name="logs_empty">Aún no hay registros</string>
+    <string name="logs_export_ok">Exportado a %1$s</string>
+    <string name="logs_export_fail">Error al exportar</string>
+    <string name="logs_copied">Copiado al portapapeles</string>
+    <string name="logs_privacy_hint">El registro contiene rutas de archivos. Confirma antes de compartir.</string>
 </resources>

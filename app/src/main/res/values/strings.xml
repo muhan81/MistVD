@@ -588,4 +588,19 @@
     <string name="beauty_preset_delete_title">Excluir predefinição?</string>
     <string name="beauty_hdr_unsupported">Este vídeo é HDR; beleza não disponível</string>
     <string name="beauty_confirm">Confirmar</string>
+    <string name="settings_logs">Log de execução</string>
+    <string name="settings_logs_desc">Registra eventos de execução para diagnóstico</string>
+    <string name="logs_title">Log de execução</string>
+    <string name="logs_level">Nível do log</string>
+    <string name="logs_export">Exportar para arquivo</string>
+    <string name="logs_share">Compartilhar</string>
+    <string name="logs_copy">Copiar</string>
+    <string name="logs_clear">Limpar</string>
+    <string name="logs_clear_confirm_title">Limpar os logs?</string>
+    <string name="logs_clear_confirm_msg">Os arquivos de log salvos neste aparelho serão excluídos. Vídeos, senhas e outros dados não são afetados.</string>
+    <string name="logs_empty">Nenhum log ainda</string>
+    <string name="logs_export_ok">Exportado para %1$s</string>
+    <string name="logs_export_fail">Falha ao exportar</string>
+    <string name="logs_copied">Copiado para a área de transferência</string>
+    <string name="logs_privacy_hint">O log contém caminhos de arquivo. Confirme antes de compartilhar.</string>
 </resources>

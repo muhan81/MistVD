@@ -131,6 +131,7 @@ import com.nkls.nekovideo.components.settings.TagsSettingsScreen
 import com.nkls.nekovideo.components.player.beauty.BeautySettingsScreen
 import com.nkls.nekovideo.components.settings.DisplaySettingsScreen
 import com.nkls.nekovideo.components.settings.InterfaceSettingsScreen
+import com.nkls.nekovideo.components.settings.LogViewerScreen
 import com.nkls.nekovideo.components.settings.PlaybackSettingsScreen
 import com.nkls.nekovideo.components.settings.SecuritySettingsScreen
 import com.nkls.nekovideo.components.settings.SettingsScreen
@@ -1466,7 +1467,7 @@ fun MainScreen(
                     TagsSettingsScreen()
                 }
                 composable("settings/about") {
-                    AboutSettingsScreen()
+                    AboutSettingsScreen(navController)
                 }
                 composable("settings/changelog") {
                     ChangelogSettingsScreen()
@@ -1476,6 +1477,11 @@ fun MainScreen(
                 }
                 composable("settings/security") {
                     SecuritySettingsScreen()
+                }
+                // 第 8 轮：运行日志。三个入口（设置主页卡片 / 关于页快捷项 / 九宫格工具箱）
+                // 全部跳到这里，界面与行为完全一致。
+                composable("settings/logs") {
+                    LogViewerScreen()
                 }
             }
         }
@@ -1613,6 +1619,9 @@ fun MainScreen(
                                 SortRowMessageCenter.showInfo(context.getString(R.string.rescanning_videos))
                             }
                             ActionType.MANAGE_TAGS -> navController.navigate("settings/tags")
+                            // 第 8 轮：九宫格工具箱里的「运行日志」。
+                            // 恒可用 —— 不进 onDisabledActionClick（那一支是给"需要先选中"的项用的）。
+                            ActionType.LOGS -> navController.navigate("settings/logs")
                             // ===== 第 7 轮：美颜 =====
                             // 未选中 → 全局设置页；恰好选中 1 个视频 → 该视频的设置页。
                             // （选中文件夹 / 图片 / 多个时九宫格里这一项是**置灰**的，走不到这里；

@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.lifecycleScope
 import com.nkls.nekovideo.components.OptimizedThumbnailManager
 import com.nkls.nekovideo.components.helpers.FilesManager
+import com.nkls.nekovideo.components.helpers.logging.LogExporter
+import com.nkls.nekovideo.components.helpers.logging.TaskLogger
 import com.nkls.nekovideo.components.helpers.storage.StorageRoot
 import com.nkls.nekovideo.components.helpers.PinnedFoldersStore
 import com.nkls.nekovideo.components.helpers.PlaylistManager
@@ -212,6 +214,12 @@ class MainActivity : AppCompatActivity() {
         // de qualquer leitura de caminho e antes de montar a interface.
         StorageRoot.init(this)
 
+        // ★ 第 8 轮：任务日志。**必须**排在 StorageRoot.init 之后（会话头要读存储根）。
+        //   init 内部会：写会话头、装全局未捕获异常钩子、启动异步写入线程；
+        //   cleanup 在后台线程裁剪旧日志（普通日志留 5 份、崩溃日志留 3 份）。
+        TaskLogger.init(this)
+        LogExporter.cleanup(this)
+
         // PROCESSAR intent inicial
         handleNotificationIntent(intent)
         _lastIntentAction.value = lastIntentAction
@@ -303,6 +311,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        // ★ 第 8 轮：只有真正结束（不是旋转屏幕这类配置变更）才算"本次会话正常结束"。
+        //   崩溃退出时这个标记写不进去 —— 下次启动的会话头会直接点出来"上次异常退出"。
+        if (isFinishing) {
+            TaskLogger.i(TaskLogger.Channel.UI, "activity.finish")
+            TaskLogger.markCleanExit(this)
+        }
         // Se o player está pausado quando a Activity é destruída (ex: botão back),
         // para o serviço e zera a playlist para não contaminar um cast futuro
         val controller = MediaControllerManager.getCurrentController()

@@ -590,4 +590,19 @@
     <string name="beauty_preset_delete_title">Voreinstellung löschen?</string>
     <string name="beauty_hdr_unsupported">Dieses Video ist HDR; Schönheit nicht verfügbar</string>
     <string name="beauty_confirm">Bestätigen</string>
+    <string name="settings_logs">Ausführungsprotokoll</string>
+    <string name="settings_logs_desc">Zeichnet Laufzeitereignisse zur Fehlersuche auf</string>
+    <string name="logs_title">Ausführungsprotokoll</string>
+    <string name="logs_level">Protokollstufe</string>
+    <string name="logs_export">In Datei exportieren</string>
+    <string name="logs_share">Teilen</string>
+    <string name="logs_copy">Kopieren</string>
+    <string name="logs_clear">Leeren</string>
+    <string name="logs_clear_confirm_title">Protokoll leeren?</string>
+    <string name="logs_clear_confirm_msg">Die auf diesem Gerät gespeicherten Protokolldateien werden gelöscht. Videos, Passwörter und andere Daten sind nicht betroffen.</string>
+    <string name="logs_empty">Noch kein Protokoll</string>
+    <string name="logs_export_ok">Exportiert nach %1$s</string>
+    <string name="logs_export_fail">Export fehlgeschlagen</string>
+    <string name="logs_copied">In die Zwischenablage kopiert</string>
+    <string name="logs_privacy_hint">Das Protokoll enthält Dateipfade. Bitte vor dem Teilen prüfen.</string>
 </resources>

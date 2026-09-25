@@ -573,4 +573,19 @@
     <string name="beauty_preset_delete_title">刪除該方案？</string>
     <string name="beauty_hdr_unsupported">該影片為 HDR，暫不支援美顏</string>
     <string name="beauty_confirm">確定</string>
+    <string name="settings_logs">執行日誌</string>
+    <string name="settings_logs_desc">記錄執行事件，用於排查問題</string>
+    <string name="logs_title">執行日誌</string>
+    <string name="logs_level">日誌等級</string>
+    <string name="logs_export">匯出至檔案</string>
+    <string name="logs_share">分享</string>
+    <string name="logs_copy">複製</string>
+    <string name="logs_clear">清除</string>
+    <string name="logs_clear_confirm_title">清除日誌？</string>
+    <string name="logs_clear_confirm_msg">將刪除本機儲存的日誌檔案，不影響影片、密碼等其他資料。</string>
+    <string name="logs_empty">尚無日誌</string>
+    <string name="logs_export_ok">已匯出至 %1$s</string>
+    <string name="logs_export_fail">匯出失敗</string>
+    <string name="logs_copied">已複製到剪貼簿</string>
+    <string name="logs_privacy_hint">日誌包含檔案路徑等資訊，對外分享前請確認。</string>
 </resources>

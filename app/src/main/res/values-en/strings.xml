@@ -588,4 +588,19 @@
     <string name="beauty_preset_delete_title">Delete preset?</string>
     <string name="beauty_hdr_unsupported">This video is HDR; beauty is unavailable</string>
     <string name="beauty_confirm">Confirm</string>
+    <string name="settings_logs">Run log</string>
+    <string name="settings_logs_desc">Records runtime events for troubleshooting</string>
+    <string name="logs_title">Run log</string>
+    <string name="logs_level">Log level</string>
+    <string name="logs_export">Export to file</string>
+    <string name="logs_share">Share</string>
+    <string name="logs_copy">Copy</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_clear_confirm_title">Clear logs?</string>
+    <string name="logs_clear_confirm_msg">Log files saved on this device will be deleted. Videos, passwords and other data are not affected.</string>
+    <string name="logs_empty">No logs yet</string>
+    <string name="logs_export_ok">Exported to %1$s</string>
+    <string name="logs_export_fail">Export failed</string>
+    <string name="logs_copied">Copied to clipboard</string>
+    <string name="logs_privacy_hint">Logs contain file paths. Please check before sharing.</string>
 </resources>

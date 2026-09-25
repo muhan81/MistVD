@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <external-path name="external" path="." />
+    <!-- 第 8 轮（任务日志）：应用内部 filesDir/logs/ —— 日志导出文件与分享都走这里。
+         没有这一条，FileProvider.getUriForFile 会直接抛 IllegalArgumentException，
+         表现为"点分享没反应"。 -->
+    <files-path name="logs" path="logs/" />
 </paths>

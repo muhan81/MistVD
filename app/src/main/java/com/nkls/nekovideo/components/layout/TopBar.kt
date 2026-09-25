@@ -253,6 +253,24 @@ fun TopBar(
                         fontWeight = FontWeight.Medium
                     )
                 }
+                currentRoute == "settings/logs" -> {
+                    // 第 8 轮：运行日志
+                    Text(
+                        text = stringResource(R.string.logs_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                // 第 8 轮顺手补：美颜页以前**没有**标题分支，顶栏一直显示 "MistVD"（第 7 轮遗漏）。
+                // 该路由带可选参数（settings/beauty?videoPath=…），所以用 startsWith 而非等值比较 ——
+                // Navigation 报出来的 destination.route 会带占位符。
+                currentRoute?.startsWith("settings/beauty") == true -> {
+                    Text(
+                        text = stringResource(R.string.beauty_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 currentRoute == "folder" && isAtRootLevel -> {
                     // Está na raiz: mostra ícone e nome do app com triple tap
                     Row(

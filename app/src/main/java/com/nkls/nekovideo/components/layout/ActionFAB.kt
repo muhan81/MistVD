@@ -43,7 +43,9 @@ enum class ActionType {
     // 第 5 轮工具箱新增（不需要选中项即可使用的"文件夹级"动作）
     SELECT_ALL, RESCAN, MANAGE_TAGS,
     // 第 7 轮：美颜（未选中=全局设置；选中恰好一个视频=该视频设置；其余情况置灰）
-    BEAUTY
+    BEAUTY,
+    // 第 8 轮：运行日志（诊断）。**恒可用** —— 放在工具箱里，出问题时随手就能找到。
+    LOGS
 }
 
 data class ActionItem(
@@ -121,6 +123,8 @@ fun ActionFAB(
     val manageTagsText = stringResource(R.string.action_manage_tags)
     // 第 7 轮美颜（复用设置页已有的标题文案）
     val beautyText = stringResource(R.string.beauty_title)
+    // 第 8 轮运行日志（同样复用设置页文案，不另起 action_logs）
+    val logsText = stringResource(R.string.settings_logs)
 
     // Verifica se algum item selecionado é pasta trancada
     val hasLockedFolders = remember(selectedItems) {
@@ -176,7 +180,7 @@ fun ActionFAB(
         selectedItems.any { path -> java.io.File(path).absolutePath == nekoPrivatePath }
     }
 
-    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected, selectAllText, rescanText, manageTagsText, shufflePlayText, deleteText, renameText, moveText, shareText, hasOnlyOneVideo, beautyText) {
+    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected, selectAllText, rescanText, manageTagsText, shufflePlayText, deleteText, renameText, moveText, shareText, hasOnlyOneVideo, beautyText, logsText) {
         when {
             isMoveMode -> {
                 listOf(
@@ -284,6 +288,9 @@ fun ActionFAB(
                     add(ActionItem(ActionType.MANAGE_TAGS, Icons.Default.Sell, manageTagsText))
                     // 第 7 轮：未选中任何东西时点「美颜」= 进入全局美颜设置
                     add(ActionItem(ActionType.BEAUTY, Icons.Default.AutoFixHigh, beautyText))
+                    // 第 8 轮：运行日志。放在这一组（不需要选中任何东西即可用）——
+                    // 出问题时用户往往正处在"点什么都没用"的状态，必须保证它**恒可点**。
+                    add(ActionItem(ActionType.LOGS, Icons.Default.Description, logsText))
                     add(
                         ActionItem(
                             ActionType.SHUFFLE_PLAY,

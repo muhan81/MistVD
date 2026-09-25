@@ -96,6 +96,7 @@ import com.nkls.nekovideo.components.helpers.TagEntity
 import com.nkls.nekovideo.components.helpers.TagScope
 import com.nkls.nekovideo.components.helpers.VideoTagStore
 import com.nkls.nekovideo.components.helpers.BeautySettingsStore
+import com.nkls.nekovideo.components.helpers.logging.TaskLogger
 import com.nkls.nekovideo.components.player.beauty.BeautyParams
 import com.nkls.nekovideo.components.player.PlayerUtils.findActivity
 import com.nkls.nekovideo.components.settings.SettingsManager
@@ -882,9 +883,19 @@ fun VideoPlayerOverlay(
                 val obfuscatedName = File(currentVideoPath).name
                 currentVideoTitle = LockedPlaybackSession.getOriginalName(obfuscatedName)
                     ?.substringBeforeLast(".") ?: obfuscatedName
+                // ★ 第 8 轮：私密库视频走 locked:// 自实现 DataSource（边读边解密），
+                //   与普通文件是两条完全不同的取数路径 —— 出问题必须一眼看出走的是哪条。
+                TaskLogger.i(
+                    TaskLogger.Channel.UI, "setupController",
+                    "source=LOCKED path=$currentVideoPath title=$currentVideoTitle"
+                )
             } else {
                 currentVideoPath = uri.path?.removePrefix("file://") ?: ""
                 currentVideoTitle = File(currentVideoPath).nameWithoutExtension
+                TaskLogger.i(
+                    TaskLogger.Channel.UI, "setupController",
+                    "source=NORMAL path=$currentVideoPath title=$currentVideoTitle"
+                )
             }
         }
 
@@ -900,7 +911,17 @@ fun VideoPlayerOverlay(
      * 只存在于 `ExoPlayer` 上。所以走"自定义命令"通道（与外部字幕同一套范式）。
      */
     fun applyBeauty(params: BeautyParams) {
-        val controller = mediaController ?: return
+        val controller = mediaController
+        if (controller == null) {
+            // ★ 第 8 轮：controller 为空 = 这条命令**根本没发出去**。
+            //   日志里没有 command.setBeauty 时，先看有没有这一行，就能立刻区分
+            //   "界面侧断了" 与 "服务侧没响应"。
+            TaskLogger.w(
+                TaskLogger.Channel.UI, "applyBeauty.noController",
+                "mediaController==null ⇒ 命令未下发"
+            )
+            return
+        }
         val args = Bundle().apply {
             putFloat(MediaPlaybackService.EXTRA_BEAUTY_SMOOTH, params.smooth)
             putFloat(MediaPlaybackService.EXTRA_BEAUTY_WHITEN, params.whiten)
@@ -910,6 +931,12 @@ fun VideoPlayerOverlay(
             putFloat(MediaPlaybackService.EXTRA_BEAUTY_CONTRAST, params.contrast)
             putFloat(MediaPlaybackService.EXTRA_BEAUTY_SATURATION, params.saturation)
         }
+        TaskLogger.i(
+            TaskLogger.Channel.UI, "applyBeauty.send",
+            "smooth=${params.smooth} whiten=${params.whiten} rosy=${params.rosy} " +
+                "sharpen=${params.sharpen} bright=${params.brightness} " +
+                "contrast=${params.contrast} sat=${params.saturation}"
+        )
         controller.sendCustomCommand(
             SessionCommand(MediaPlaybackService.COMMAND_SET_BEAUTY, Bundle.EMPTY),
             args
@@ -928,11 +955,22 @@ fun VideoPlayerOverlay(
      * 所以这里按轨道类型筛出视频轨再读它的 `colorInfo`（与 [checkAvailableTracks] 同一套写法）。
      */
     fun isCurrentVideoHdr(): Boolean {
-        val tracks = mediaController?.currentTracks ?: return false
+        val tracks = mediaController?.currentTracks
+        if (tracks == null) {
+            TaskLogger.d(TaskLogger.Channel.UI, "hdrCheck", "currentTracks==null ⇒ 判为非 HDR")
+            return false
+        }
         for (group in tracks.groups) {
             if (group.type != C.TRACK_TYPE_VIDEO) continue
             for (i in 0 until group.length) {
                 val transfer = group.getTrackFormat(i).colorInfo?.colorTransfer
+                // ★ 第 8 轮：把实际读到的 colorTransfer 记下来 —— HDR 阻断（H5）是否误判，
+                //   看这一行就够（ST2084=6 / HLG=8；其它值＝SDR）。
+                TaskLogger.d(
+                    TaskLogger.Channel.UI, "hdrCheck",
+                    "colorTransfer=$transfer (ST2084=${C.COLOR_TRANSFER_ST2084} " +
+                        "HLG=${C.COLOR_TRANSFER_HLG})"
+                )
                 if (transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG) {
                     return true
                 }
@@ -951,12 +989,27 @@ fun VideoPlayerOverlay(
         beautyHdrBlocked = hdr
 
         if (hdr) {
+            // ★ 第 8 轮：这一行就是 H5（HDR 阻断）的证据，诊断摘要会直接抓 `hdrBlocked=true`。
+            TaskLogger.w(
+                TaskLogger.Channel.BEAUTY, "hdrBlocked=true",
+                "检测到 HDR 片源，本次播放不启用美颜 path=$currentVideoPath"
+            )
             beautyParams = BeautyParams.DEFAULT
             applyBeauty(BeautyParams.DEFAULT)
         } else {
             beautyOnlyThisVideo = BeautySettingsStore.hasForVideo(context, currentVideoPath)
             val resolved = BeautySettingsStore.resolve(context, currentVideoPath)
             beautyParams = resolved
+            // ★ 第 8 轮：把"这条视频实际解析出什么参数、来自哪个层次"记下来。
+            //   总开关关着 / 命中单视频 / 回落全局 —— 三种情况从日志一眼可分。
+            TaskLogger.i(
+                TaskLogger.Channel.BEAUTY, "resolveForVideo",
+                "path=$currentVideoPath masterEnabled=${BeautySettingsStore.isEnabled(context)} " +
+                    "perVideo=$beautyOnlyThisVideo " +
+                    "params=smooth=${resolved.smooth},whiten=${resolved.whiten},rosy=${resolved.rosy}," +
+                    "sharpen=${resolved.sharpen},bright=${resolved.brightness}," +
+                    "contrast=${resolved.contrast},sat=${resolved.saturation}"
+            )
             applyBeauty(resolved)
         }
     }
@@ -1514,6 +1567,12 @@ fun VideoPlayerOverlay(
         if (overlayActuallyVisible && controller != null) {
             listener = object : Player.Listener {
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
+                    // ★ 第 8 轮：界面侧（经 MediaController 转发）也记一份 ——
+                    //   与服务侧记录对照，能判断"事件是卡在 service 还是没转发到界面"。
+                    TaskLogger.i(
+                        TaskLogger.Channel.UI, "ui.onVideoSizeChanged",
+                        "w=${videoSize.width} h=${videoSize.height}"
+                    )
                     if (!overlayActuallyVisible) return
                     if (isWaitingForRotationGate) {
                         finishRotationGateIfReady(controller, videoSize)
@@ -1523,6 +1582,10 @@ fun VideoPlayerOverlay(
                 }
 
                 override fun onRenderedFirstFrame() {
+                    TaskLogger.i(
+                        TaskLogger.Channel.UI, "ui.onRenderedFirstFrame",
+                        "★ 界面侧收到首帧 ⇒ 解除缓冲遮罩"
+                    )
                     hasRenderedFirstFrame = true
                     showBlockingBufferingUi = false
                 }
@@ -2150,15 +2213,28 @@ fun VideoPlayerOverlay(
                             // 第 7 轮（业主裁决）：**不再**顺手打开总开关。
                             // 总开关关着时照常保存参数，等用户自己打开总开关时即刻生效；
                             // 面板里会显示 beauty_master_off_hint 说明这一点，不会让人误以为"调坏了"。
-                            if (beautyOnlyThisVideo && currentVideoPath.isNotEmpty()) {
+                            val toPerVideo = beautyOnlyThisVideo && currentVideoPath.isNotEmpty()
+                            if (toPerVideo) {
                                 BeautySettingsStore.setForVideo(context, currentVideoPath, newParams)
                             } else {
                                 BeautySettingsStore.setGlobal(context, newParams)
                             }
+                            // ★ 第 8 轮：记下"谁改的、存到哪一层、总开关当时开着还是关着"。
+                            //   总开关关着时这里照样会存参数 —— 日志能证明"调整确实保存下来了"。
+                            TaskLogger.i(
+                                TaskLogger.Channel.UI, "beauty.commit",
+                                "scope=${if (toPerVideo) "perVideo" else "global"} " +
+                                    "masterEnabled=${BeautySettingsStore.isEnabled(context)} " +
+                                    "smooth=${newParams.smooth} whiten=${newParams.whiten} " +
+                                    "rosy=${newParams.rosy} sharpen=${newParams.sharpen} " +
+                                    "bright=${newParams.brightness} contrast=${newParams.contrast} " +
+                                    "sat=${newParams.saturation}"
+                            )
                             applyBeauty(newParams)
                         },
                         onBeautyOnlyThisVideoChange = { only ->
                             beautyOnlyThisVideo = only
+                            TaskLogger.i(TaskLogger.Channel.UI, "beauty.onlyThisVideo", "only=$only")
                             if (currentVideoPath.isNotEmpty()) {
                                 if (only) {
                                     // 把当前这套参数固化成"这个视频专属"
@@ -2173,6 +2249,7 @@ fun VideoPlayerOverlay(
                             }
                         },
                         onBeautyReset = {
+                            TaskLogger.i(TaskLogger.Channel.UI, "beauty.reset", "回到全 0（关闭全部项）")
                             beautyParams = BeautyParams.DEFAULT
                             if (beautyOnlyThisVideo && currentVideoPath.isNotEmpty()) {
                                 BeautySettingsStore.setForVideo(context, currentVideoPath, BeautyParams.DEFAULT)

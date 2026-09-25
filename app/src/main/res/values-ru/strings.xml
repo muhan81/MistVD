@@ -598,4 +598,19 @@
     <string name="beauty_preset_delete_title">Удалить пресет?</string>
     <string name="beauty_hdr_unsupported">Это видео HDR; красота недоступна</string>
     <string name="beauty_confirm">Подтвердить</string>
+    <string name="settings_logs">Журнал выполнения</string>
+    <string name="settings_logs_desc">Записывает события работы для диагностики</string>
+    <string name="logs_title">Журнал выполнения</string>
+    <string name="logs_level">Уровень журнала</string>
+    <string name="logs_export">Экспорт в файл</string>
+    <string name="logs_share">Поделиться</string>
+    <string name="logs_copy">Копировать</string>
+    <string name="logs_clear">Очистить</string>
+    <string name="logs_clear_confirm_title">Очистить журналы?</string>
+    <string name="logs_clear_confirm_msg">Файлы журналов на этом устройстве будут удалены. Видео, пароли и другие данные не затрагиваются.</string>
+    <string name="logs_empty">Журналов пока нет</string>
+    <string name="logs_export_ok">Экспортировано в %1$s</string>
+    <string name="logs_export_fail">Не удалось экспортировать</string>
+    <string name="logs_copied">Скопировано в буфер обмена</string>
+    <string name="logs_privacy_hint">Журнал содержит пути к файлам. Проверьте перед отправкой.</string>
 </resources>
