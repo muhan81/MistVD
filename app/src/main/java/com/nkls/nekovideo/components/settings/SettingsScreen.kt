@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
@@ -389,6 +390,8 @@ fun PlaybackSettingsScreen() {
 
     var backgroundPlayback by remember { mutableStateOf(prefs.getBoolean("background_playback", true)) }
     var doubleTapSeek by remember { mutableIntStateOf(prefs.getInt("double_tap_seek", 10)) }
+    // 长按画面的临时加速倍率（第 5 轮），存 Float，界面按整数选（2/3/4）
+    var longPressSpeed by remember { mutableIntStateOf(prefs.getFloat("long_press_speed", 3.0f).toInt()) }
     var dragSeekEnabled by remember { mutableStateOf(prefs.getBoolean("drag_seek_enabled", true)) }
     var volumeBrightnessGesturesEnabled by remember { mutableStateOf(prefs.getBoolean("volume_brightness_gestures_enabled", true)) }
     var continueWatchingEnabled by remember {
@@ -423,6 +426,19 @@ fun PlaybackSettingsScreen() {
             onValueChange = {
                 doubleTapSeek = it
                 prefs.edit { putInt("double_tap_seek", it) }
+            }
+        ),
+        PlaybackSettingItem.Slider(
+            icon = Icons.Default.FastForward,
+            titleRes = R.string.playback_long_press_speed,
+            subtitleRes = R.string.playback_long_press_speed_desc,
+            value = longPressSpeed,
+            range = 2..4,
+            discreteValues = listOf(2, 3, 4),
+            valueFormatter = { "${it}x" },
+            onValueChange = {
+                longPressSpeed = it
+                prefs.edit { putFloat("long_press_speed", it.toFloat()) }
             }
         ),
         PlaybackSettingItem.Switch(
@@ -2112,6 +2128,17 @@ object SettingsManager {
     fun setPlaybackSpeed(context: Context, speed: Float) {
         context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE)
             .edit { putFloat("playback_speed", speed) }
+    }
+
+    /** 长按画面时的临时加速倍率（第 5 轮新增），默认 3x。 */
+    fun getLongPressSpeed(context: Context): Float {
+        return context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE)
+            .getFloat("long_press_speed", 3.0f)
+    }
+
+    fun setLongPressSpeed(context: Context, speed: Float) {
+        context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE)
+            .edit { putFloat("long_press_speed", speed) }
     }
 
 }

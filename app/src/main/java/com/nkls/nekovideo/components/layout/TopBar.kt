@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -76,6 +77,7 @@ fun TopBar(
     onPasswordDialog: () -> Unit,
     onSelectionClear: () -> Unit,
     onSelectAll: () -> Unit,
+    onCreateFolder: () -> Unit = {},
     isAtRootLevel: Boolean = false,
     onNavigateToPath: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
@@ -275,7 +277,7 @@ fun TopBar(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "NekoVideo",
+                            text = "MistVD",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -398,7 +400,7 @@ fun TopBar(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "NekoVideo",
+                            text = "MistVD",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -438,6 +440,17 @@ fun TopBar(
             }
         },
         actions = {
+            // 新建文件夹（第 5 轮从悬浮窗弹窗菜单搬到顶栏，位置在投屏左边）
+            // 显示条件与投屏一致：仅文件夹页、且未进入多选
+            if (currentRoute == "folder" && selectedItems.isEmpty()) {
+                IconButton(onClick = onCreateFolder) {
+                    Icon(
+                        imageVector = Icons.Default.CreateNewFolder,
+                        contentDescription = stringResource(R.string.action_create_folder),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
             // Botão Cast — visível na tela de pasta, fora do modo seleção
             if (currentRoute == "folder" && selectedItems.isEmpty()) {
                 IconButton(onClick = {

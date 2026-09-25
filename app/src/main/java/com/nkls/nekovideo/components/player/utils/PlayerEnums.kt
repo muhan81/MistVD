@@ -2,11 +2,17 @@ package com.nkls.nekovideo.components.player
 
 /**
  * Modos de repetição do player
+ *
+ * 第 5 轮由三态扩为**四态**。注意 [SHUFFLE] 在播放器侧并不是一个独立的 repeat 常量 ——
+ * 它映射为 `shuffleModeEnabled = true` **加上** `REPEAT_MODE_ALL`（打乱后无限循环、播完继续）。
+ * 之所以仍放进同一个枚举：界面上只有一个按钮在循环切换，
+ * 用同一个枚举才能保证"按钮显示的状态"与"播放器实际状态"严格一一对应。
  */
 enum class RepeatMode {
     NONE,
     REPEAT_ALL,
-    REPEAT_ONE
+    REPEAT_ONE,
+    SHUFFLE
 }
 
 /**
@@ -19,7 +25,13 @@ enum class RotationMode {
 }
 
 /**
- * Velocidades de reprodução suportadas (0.25 em 0.25 entre 0.25 e 2.0)
+ * Velocidades de reprodução suportadas
+ *
+ * 第 5 轮由 8 档（0.25~2.0）扩为 **14 档**（上限提到 8x）。
+ * 档位在 0.25~2.0 之间是细密的（0.25 步进），再往上是粗跳 —— 因为高速区间
+ * 人耳已听不出 3.5 与 4 的差别，密档只会让面板变长。
+ * ⚠️ 新增/删除档位必须同步改 `CustomVideoControls.formatSpeedLabel()`
+ * （那里是穷尽 `when`，不改会直接编译不过）。
  */
 enum class PlaybackSpeed(val value: Float) {
     SPEED_0_25(0.25f),
@@ -29,7 +41,21 @@ enum class PlaybackSpeed(val value: Float) {
     SPEED_1_25(1.25f),
     SPEED_1_50(1.50f),
     SPEED_1_75(1.75f),
-    SPEED_2_00(2.00f)
+    SPEED_2_00(2.00f),
+    SPEED_2_50(2.50f),
+    SPEED_3_00(3.00f),
+    SPEED_4_00(4.00f),
+    SPEED_5_00(5.00f),
+    SPEED_6_00(6.00f),
+    SPEED_8_00(8.00f);
+
+    companion object {
+        /**
+         * 超过这个速度就自动静音（第 5 轮）。
+         * 变速是保音调的，但 3x 往上人声已经是噪声，主流播放器都在高速时静音。
+         */
+        const val AUTO_MUTE_ABOVE = 2.00f
+    }
 }
 
 /**

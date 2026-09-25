@@ -548,4 +548,17 @@
     <string name="storage_migration_success">Bóveda movida correctamente</string>
     <string name="storage_migration_failed">Error al mover. Los datos antiguos están intactos.</string>
     <string name="storage_migration_target_exists">El destino ya tiene una carpeta de bóveda con contenido. No se puede mover.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Herramientas</string>
+    <string name="action_rescan">Reescanear</string>
+    <string name="action_manage_tags">Gestionar etiquetas</string>
+    <string name="select_items_first">Selecciona elementos primero</string>
+    <string name="rescanning_videos">Reescaneando…</string>
+    <string name="player_repeat_shuffle">Aleatorio</string>
+    <string name="playback_long_press_speed">Velocidad al mantener pulsado</string>
+    <string name="playback_long_press_speed_desc">Velocidad al mantener pulsada la pantalla</string>
+    <string name="playback_speed_auto_mute_hint">Por encima de 2x el audio se silencia</string>
+    <string name="player_long_press_speed">Aceleración al mantener</string>
+
 </resources>

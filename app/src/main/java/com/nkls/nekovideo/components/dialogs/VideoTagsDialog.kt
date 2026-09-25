@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,12 +58,20 @@ fun VideoTagsDialog(
     previewVideoUri: Uri? = null,
     onDismiss: () -> Unit,
     onManageTags: () -> Unit,
+    /**
+     * 就地新建一个标签（第 5 轮新增）。scope 由调用方按当前环境决定（普通 / 私密）。
+     * 返回新标签；失败时 Result 里带错误消息（重名 / 空名等由底层校验）。
+     */
+    onCreateTag: suspend (String) -> Result<TagEntity> = {
+        Result.failure(IllegalStateException("Tag creation is not supported here"))
+    },
     onSave: suspend (Set<Long>) -> Result<Unit>
 ) {
     val coroutineScope = rememberCoroutineScope()
     val title = stringResource(R.string.video_tags_title)
     val selectedCountText = pluralStringResource(R.plurals.video_tags_selected_count, selectedVideoCount, selectedVideoCount)
     val manageTagsText = stringResource(R.string.settings_tags)
+    val tagNameEmptyText = stringResource(R.string.video_tags_name_empty)
     val dialogTags = remember(tags) { mutableStateListOf<TagEntity>().apply { addAll(tags) } }
     var selectedTagIds by remember(initialSelectedTagIds) { mutableStateOf(initialSelectedTagIds) }
     var isSaving by remember { mutableStateOf(false) }
@@ -197,6 +207,58 @@ fun VideoTagsDialog(
                             )
                         }
                     }
+                }
+            }
+
+            // ===== 就地新建标签（第 5 轮）=====
+            // 以前想给视频打个"新"标签，必须先退出这里 → 设置 → 标签 → 建好 → 再回来。
+            // 现在在这里直接建，建完自动勾上当前这批视频。
+            var newTagName by remember { mutableStateOf("") }
+            var isCreatingTag by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { newTagName = it },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isSaving && !isCreatingTag,
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.video_tags_new_label)) },
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+                TextButton(
+                    onClick = {
+                        val name = newTagName.trim()
+                        isCreatingTag = true
+                        errorMessage = null
+                        coroutineScope.launch {
+                            onCreateTag(name)
+                                .onSuccess { tag ->
+                                    if (dialogTags.none { it.id == tag.id }) {
+                                        dialogTags.add(tag)
+                                    }
+                                    // 建完直接勾上，用户不必再点一次
+                                    selectedTagIds = selectedTagIds + tag.id
+                                    newTagName = ""
+                                }
+                                .onFailure { error ->
+                                    errorMessage = error.localizedMessage ?: tagNameEmptyText
+                                }
+                            isCreatingTag = false
+                        }
+                    },
+                    enabled = !isSaving && !isCreatingTag && newTagName.isNotBlank(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(stringResource(R.string.video_tags_create))
                 }
             }
 

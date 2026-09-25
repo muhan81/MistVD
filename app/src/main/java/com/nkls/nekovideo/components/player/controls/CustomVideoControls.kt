@@ -16,10 +16,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -59,6 +61,7 @@ import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StayCurrentLandscape
@@ -91,6 +94,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -139,6 +143,7 @@ fun CustomVideoControls(
     resetUITimer: () -> Unit,
     repeatMode: RepeatMode,
     onRepeatModeChange: (RepeatMode) -> Unit,
+    onRepeatModeLongClick: () -> Unit = {},
     playbackSpeed: PlaybackSpeed,
     onPlaybackSpeedChange: (PlaybackSpeed) -> Unit,
     onSpeedDialogOpen: () -> Unit,
@@ -626,60 +631,80 @@ fun CustomVideoControls(
                                             fontWeight = FontWeight.Bold
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Slider(
-                                            value = playbackSpeed.value,
-                                            onValueChange = {
-                                                val closest = PlaybackSpeed.entries.minByOrNull { speed ->
-                                                    kotlin.math.abs(speed.value - it)
-                                                }
-                                                closest?.let { onPlaybackSpeedChange(it) }
-                                            },
-                                            valueRange = 0.25f..2.0f,
-                                            steps = 6,
-                                            colors = SliderDefaults.colors(
-                                                thumbColor = MaterialTheme.colorScheme.primary,
-                                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                                            ),
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(
+                                        // 第 5 轮：档位从 8 个扩到 14 个（上限 8x），
+                                        // 滑块既装不下也不等距，改成"档位点选"更直观。
+                                        FlowRow(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             PlaybackSpeed.entries.forEach { speed ->
-                                                Text(
-                                                    text = formatSpeedLabel(speed),
-                                                    color = if (speed == playbackSpeed) MaterialTheme.colorScheme.onSurface
-                                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    fontSize = 9.sp
-                                                )
+                                                val selected = speed == playbackSpeed
+                                                Surface(
+                                                    onClick = { onPlaybackSpeedChange(speed) },
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    color = if (selected) {
+                                                        MaterialTheme.colorScheme.primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                                    },
+                                                    contentColor = if (selected) {
+                                                        MaterialTheme.colorScheme.onPrimary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurface
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = formatSpeedLabel(speed),
+                                                        fontSize = 13.sp,
+                                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                                    )
+                                                }
                                             }
                                         }
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = stringResource(R.string.playback_speed_auto_mute_hint),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp,
+                                            textAlign = TextAlign.Center
+                                        )
                                     }
                                 }
                             }
 
-                            // Repeat mode
+                            // Repeat mode（第 5 轮：三态 → 四态，末态"随机"为无限循环）
                             val (repIcon, repDesc, repActive) = when (repeatMode) {
                                 RepeatMode.NONE -> Triple(Icons.Default.PlaylistPlay, stringResource(R.string.player_repeat_normal), false)
                                 RepeatMode.REPEAT_ALL -> Triple(Icons.Default.Repeat, stringResource(R.string.player_repeat_all), true)
                                 RepeatMode.REPEAT_ONE -> Triple(Icons.Default.RepeatOne, stringResource(R.string.player_repeat_one), true)
+                                RepeatMode.SHUFFLE -> Triple(Icons.Default.Shuffle, stringResource(R.string.player_repeat_shuffle), true)
                             }
-                            IconButton(
-                                onClick = {
-                                    val nextMode = when (repeatMode) {
-                                        RepeatMode.NONE -> RepeatMode.REPEAT_ALL
-                                        RepeatMode.REPEAT_ALL -> RepeatMode.REPEAT_ONE
-                                        RepeatMode.REPEAT_ONE -> RepeatMode.NONE
-                                    }
-                                    onRepeatModeChange(nextMode)
-                                    resetUITimer()
-                                },
+                            // 用 Box + combinedClickable 取代 IconButton —— IconButton 接不了长按，
+                            // 而长按这里是"按标签随机播放"的入口（第 5 轮）。
+                            Box(
                                 modifier = Modifier
                                     .background(if (repActive) CtrlBtnBgActive else CtrlBtnBg, CircleShape)
                                     .size(38.dp)
+                                    .clip(CircleShape)
+                                    .combinedClickable(
+                                        onClick = {
+                                            val nextMode = when (repeatMode) {
+                                                RepeatMode.NONE -> RepeatMode.REPEAT_ALL
+                                                RepeatMode.REPEAT_ALL -> RepeatMode.REPEAT_ONE
+                                                RepeatMode.REPEAT_ONE -> RepeatMode.SHUFFLE
+                                                RepeatMode.SHUFFLE -> RepeatMode.NONE
+                                            }
+                                            onRepeatModeChange(nextMode)
+                                            resetUITimer()
+                                        },
+                                        onLongClick = {
+                                            onRepeatModeLongClick()
+                                            resetUITimer()
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = repIcon,
@@ -1253,6 +1278,12 @@ private fun formatSpeedLabel(speed: PlaybackSpeed): String = when (speed) {
     PlaybackSpeed.SPEED_1_50 -> "1.5x"
     PlaybackSpeed.SPEED_1_75 -> "1.75x"
     PlaybackSpeed.SPEED_2_00 -> "2x"
+    PlaybackSpeed.SPEED_2_50 -> "2.5x"
+    PlaybackSpeed.SPEED_3_00 -> "3x"
+    PlaybackSpeed.SPEED_4_00 -> "4x"
+    PlaybackSpeed.SPEED_5_00 -> "5x"
+    PlaybackSpeed.SPEED_6_00 -> "6x"
+    PlaybackSpeed.SPEED_8_00 -> "8x"
 }
 
 private fun formatRemainingTime(context: Context, remainingMs: Long): String {

@@ -548,4 +548,17 @@
     <string name="storage_migration_success">Tresor erfolgreich verschoben</string>
     <string name="storage_migration_failed">Verschieben fehlgeschlagen. Die alten Daten sind unberührt.</string>
     <string name="storage_migration_target_exists">Am Zielort existiert bereits ein Tresor-Ordner mit Inhalt. Verschieben nicht möglich.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Werkzeugkasten</string>
+    <string name="action_rescan">Neu scannen</string>
+    <string name="action_manage_tags">Tags verwalten</string>
+    <string name="select_items_first">Zuerst Elemente auswählen</string>
+    <string name="rescanning_videos">Erneutes Scannen…</string>
+    <string name="player_repeat_shuffle">Zufällig</string>
+    <string name="playback_long_press_speed">Geschwindigkeit bei Langdruck</string>
+    <string name="playback_long_press_speed_desc">Wiedergabegeschwindigkeit bei langem Drücken</string>
+    <string name="playback_speed_auto_mute_hint">Ab 2x wird der Ton stummgeschaltet</string>
+    <string name="player_long_press_speed">Beschleunigung bei Langdruck</string>
+
 </resources>

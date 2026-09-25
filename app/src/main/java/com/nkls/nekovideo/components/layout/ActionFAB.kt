@@ -38,7 +38,9 @@ import com.nkls.nekovideo.components.helpers.FilesManager
 enum class ActionType {
     UNLOCK, SECURE, DELETE, RENAME, MOVE, SHUFFLE_PLAY, CREATE_FOLDER, SETTINGS, PASTE,
     PRIVATIZE, UNPRIVATIZE, CANCEL_MOVE, SET_AS_SECURE_FOLDER, SHARE, TAGS,
-    PIN_FOLDER, UNPIN_FOLDER
+    PIN_FOLDER, UNPIN_FOLDER,
+    // 第 5 轮工具箱新增（不需要选中项即可使用的"文件夹级"动作）
+    SELECT_ALL, RESCAN, MANAGE_TAGS
 }
 
 data class ActionItem(
@@ -49,6 +51,19 @@ data class ActionItem(
     val isEnabled: Boolean = true
 )
 
+/**
+ * 「多功能」悬浮按钮 + 动作面板（第 4 轮起由 [FloatingActionDock] 承载拖动）。
+ *
+ * 按钮一个三种身份（图标随之切换）：
+ * - **无选中** → 九宫格图标 → 弹出「工具箱」面板（全选 / 重新扫描 / 标签管理 / 随机播放，
+ *   以及删除·重命名·移动·分享·标签这五个**需要先选中**的项 —— 未选中时置灰，
+ *   点击只给提示，见 [onDisabledActionClick]）；
+ * - **有选中** → 三个点图标 → 弹出操作菜单（与上游一致，能力全保留）；
+ * - **移动模式** → 不走按钮，直接画粘贴 / 取消 / 新建文件夹按钮组。
+ *
+ * @param onDisabledActionClick 点击"置灰但可见"的入口时的回调（用于提示"请先选中文件"）。
+ *   置灰项仍然接受点击，否则用户点了没有任何反馈，会以为界面坏了。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActionFAB(
@@ -64,7 +79,8 @@ fun ActionFAB(
     onShuffleLongPressHintShown: () -> Unit = {},
     onFabOpened: () -> Unit = {},
     onActionClick: (ActionType) -> Unit,
-    onActionLongClick: (ActionType) -> Unit = {}
+    onActionLongClick: (ActionType) -> Unit = {},
+    onDisabledActionClick: (ActionType) -> Unit = {}
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
@@ -80,7 +96,6 @@ fun ActionFAB(
     val moveText = stringResource(R.string.action_move)
     val shufflePlayText = stringResource(R.string.action_shuffle_play)
     val createFolderText = stringResource(R.string.action_create_folder)
-    val settingsText = stringResource(R.string.action_settings)
     val secureFolderSet = stringResource(R.string.action_set_secure_folder)
     val shareText = stringResource(R.string.action_share)
     val tagsText = stringResource(R.string.action_tags)
@@ -93,11 +108,14 @@ fun ActionFAB(
     val cancelDescription = stringResource(R.string.cancel_description)
     val pasteHereDescription = stringResource(R.string.paste_here_description)
     val actionsDescription = stringResource(R.string.actions_description)
-    val optionsDescription = stringResource(R.string.options_description)
     val modeMoveFiles = stringResource(R.string.mode_move_files)
     val itemActions = stringResource(R.string.item_actions)
-    val options = stringResource(R.string.options)
     val navigateToDestination = stringResource(R.string.navigate_to_destination)
+    // 第 5 轮工具箱
+    val toolboxTitle = stringResource(R.string.toolbox_title)
+    val selectAllText = stringResource(R.string.select_all)
+    val rescanText = stringResource(R.string.action_rescan)
+    val manageTagsText = stringResource(R.string.action_manage_tags)
 
     // Verifica se algum item selecionado é pasta trancada
     val hasLockedFolders = remember(selectedItems) {
@@ -144,7 +162,7 @@ fun ActionFAB(
         selectedItems.any { path -> java.io.File(path).absolutePath == nekoPrivatePath }
     }
 
-    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected) {
+    val actions = remember(hasSelectedItems, isSecureMode, hasLockedFolders, hasLockableFolders, isMoveMode, moveItemsText, isRootDirectory, selectedItems, isInsideLockedFolder, hasOnlyFiles, tagsText, areAllSelectedItemsFolders, areAllSelectedFoldersPinned, areAllSelectedFoldersUnpinned, pinFolderText, unpinFolderText, hasNekoPrivateFolderSelected, selectAllText, rescanText, manageTagsText, shufflePlayText, deleteText, renameText, moveText, shareText) {
         when {
             isMoveMode -> {
                 listOf(
@@ -231,29 +249,35 @@ fun ActionFAB(
                 actionsList
             }
             else -> {
-                if (isInsideLockedFolder) {
-                    // Inside locked/encrypted folder: shuffle + create folder + settings
-                    buildList {
-                        add(ActionItem(
-                            ActionType.SHUFFLE_PLAY,
-                            Icons.Default.Shuffle,
-                            shufflePlayText
-                        ))
-                        add(ActionItem(ActionType.CREATE_FOLDER, Icons.Default.CreateNewFolder, createFolderText))
-                        add(ActionItem(ActionType.SETTINGS, Icons.Default.Settings, settingsText))
-                    }
-                } else {
-                    // Normal folder (including non-locked folders inside secure_videos)
-                    buildList {
-                        add(ActionItem(
+                // ===== 工具箱（第 5 轮）=====
+                // 分两段：前半是本文件夹就能做的事（不需要选中任何东西）；
+                // 后半是"对选中项的操作" —— 没选中时没有操作目标，所以置灰，
+                // 但仍接受点击，点了给一句提示（见 onDisabledActionClick）。
+                buildList {
+                    add(ActionItem(ActionType.SELECT_ALL, Icons.Default.SelectAll, selectAllText))
+                    add(ActionItem(ActionType.RESCAN, Icons.Default.Refresh, rescanText))
+                    add(ActionItem(ActionType.MANAGE_TAGS, Icons.Default.Sell, manageTagsText))
+                    add(
+                        ActionItem(
                             ActionType.SHUFFLE_PLAY,
                             Icons.Default.Shuffle,
                             shufflePlayText,
                             isEnabled = !isRootDirectory
-                        ))
-                        add(ActionItem(ActionType.CREATE_FOLDER, Icons.Default.CreateNewFolder, createFolderText))
-                        add(ActionItem(ActionType.SETTINGS, Icons.Default.Settings, settingsText))
-                    }
+                        )
+                    )
+
+                    add(ActionItem(ActionType.DELETE, Icons.Default.Delete, deleteText, isEnabled = false))
+                    add(ActionItem(ActionType.RENAME, Icons.Default.Edit, renameText, isEnabled = false))
+                    add(
+                        ActionItem(
+                            ActionType.MOVE,
+                            Icons.AutoMirrored.Filled.DriveFileMove,
+                            moveText,
+                            isEnabled = false
+                        )
+                    )
+                    add(ActionItem(ActionType.SHARE, Icons.Default.Share, shareText, isEnabled = false))
+                    add(ActionItem(ActionType.TAGS, Icons.Default.LocalOffer, tagsText, isEnabled = false))
                 }
             }
         }
@@ -353,8 +377,8 @@ fun ActionFAB(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(
-                    imageVector = if (hasSelectedItems) Icons.Default.MoreVert else Icons.Default.Settings,
-                    contentDescription = if (hasSelectedItems) actionsDescription else optionsDescription,
+                    imageVector = if (hasSelectedItems) Icons.Default.MoreVert else Icons.Default.Apps,
+                    contentDescription = if (hasSelectedItems) actionsDescription else toolboxTitle,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -398,7 +422,7 @@ fun ActionFAB(
                         text = when {
                             isMoveMode -> modeMoveFiles
                             hasSelectedItems -> itemActions
-                            else -> options
+                            else -> toolboxTitle
                         },
                         style = if (isWide) MaterialTheme.typography.titleMedium
                                else MaterialTheme.typography.headlineSmall,
@@ -474,6 +498,10 @@ fun ActionFAB(
                                     onShuffleLongPressHintShown()
                                 }
                                 showBottomSheet = false
+                            },
+                            onDisabledClick = {
+                                onDisabledActionClick(action.type)
+                                showBottomSheet = false
                             }
                         )
                     }
@@ -493,7 +521,8 @@ private fun ActionGridItem(
     isCompact: Boolean = false,
     showHighlight: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+    onDisabledClick: () -> Unit = {}
 ) {
     val itemHeight = when {
         isCompact -> 76.dp
@@ -511,9 +540,11 @@ private fun ActionGridItem(
             .fillMaxWidth()
             .height(itemHeight)
             .combinedClickable(
-                enabled = action.isEnabled,
+                // 恒为 true：置灰项也要接受点击，否则点了毫无反馈、像界面卡死。
+                // 是否真的执行由 action.isEnabled 决定，不执行时走 onDisabledClick 给提示。
+                enabled = true,
                 onClick = {
-                    if (action.isEnabled) onClick()
+                    if (action.isEnabled) onClick() else onDisabledClick()
                 },
                 onLongClick = {
                     if (action.isEnabled) onLongClick()

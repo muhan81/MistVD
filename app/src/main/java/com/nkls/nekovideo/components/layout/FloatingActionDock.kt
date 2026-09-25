@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +34,7 @@ import com.nkls.nekovideo.R
 import kotlin.math.roundToInt
 
 /**
- * 悬浮按钮坞：把「私密保险库锁」与「设置」两个 FAB 竖排成一列，**整列一起拖动**。
+ * 悬浮按钮坞：把**三个** FAB 竖排成一列（锁 → 多功能 → 设置），**整列一起拖动**。
  *
  * 位置以**归一化比例**（0f..1f）持久化到 `nekovideo_settings`：
  * `x = 0` 最左 / `x = 1` 最右；`y = 0` 最上 / `y = 1` 最下。默认 `(1, 1)` = 右下角。
@@ -48,18 +49,27 @@ import kotlin.math.roundToInt
  *
  * 把坞放进覆盖整屏的 `Box` 后，容器矩形就是整屏，只要坞还在屏内就一定能点到。
  *
+ * ## 移动模式（第 5 轮新增行为）
+ *
+ * `isMoveMode = true` 时**只渲染 [toolboxFab] 槽**（那里放的是粘贴 / 取消 / 新建文件夹按钮组），
+ * **隐藏锁与设置按钮**：移动文件是一次模态操作，此时既不该去戳保险库、也不该跳设置，
+ * 少两个按钮还能让按钮组不被挤出屏幕。
+ *
  * @param isVaultUnlocked 保险库当前是否已解锁 —— 决定锁图标是「合着」还是「打开」
  * @param onVaultClick    锁按钮点击回调。**完整语义由调用方提供**（与左上角连点 3 次一致）：
  *                        未解锁 → 弹密码框；已解锁 → 直接隐藏、不弹密码 + toast 提示
- * @param settingsFab     设置按钮的内容。由调用方传入 `ActionFAB`，其内部的
- *                        `ModalBottomSheet` 菜单逻辑保持原样不动
+ * @param onSettingsClick 设置按钮点击回调 —— 第 5 轮起**直接进设置页**，不再弹任何菜单
+ * @param isMoveMode      是否处于"移动文件"模式（见上）
+ * @param toolboxFab      「多功能」按钮槽。由调用方传入 [ActionFAB]
  */
 @Composable
 fun FloatingActionDock(
     isVaultUnlocked: Boolean,
     onVaultClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
-    settingsFab: @Composable () -> Unit
+    isMoveMode: Boolean = false,
+    toolboxFab: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember(context) {
@@ -123,32 +133,52 @@ fun FloatingActionDock(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 保险库锁：未解锁 = 合锁，已解锁 = 开锁
-            FloatingActionButton(
-                onClick = onVaultClick,
-                modifier = Modifier.size(48.dp),
-                containerColor = if (isVaultUnlocked) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                },
-                contentColor = if (isVaultUnlocked) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer
+            // 移动模式下不显示锁与设置（见上方 KDoc）
+            if (!isMoveMode) {
+                // 保险库锁：未解锁 = 合锁，已解锁 = 开锁。
+                // 第 5 轮：尺寸 48 → 56dp、图标 22 → 24dp，与"多功能"和"设置"完全一致。
+                FloatingActionButton(
+                    onClick = onVaultClick,
+                    modifier = Modifier.size(56.dp),
+                    containerColor = if (isVaultUnlocked) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                    contentColor = if (isVaultUnlocked) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (isVaultUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = stringResource(
+                            if (isVaultUnlocked) R.string.vault_fab_unlocked else R.string.vault_fab_locked
+                        ),
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = if (isVaultUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                    contentDescription = stringResource(
-                        if (isVaultUnlocked) R.string.vault_fab_unlocked else R.string.vault_fab_locked
-                    ),
-                    modifier = Modifier.size(22.dp)
-                )
             }
 
-            // 设置按钮：由调用方传入，内部菜单逻辑不变
-            settingsFab()
+            // 多功能按钮 / 移动模式的按钮组
+            toolboxFab()
+
+            if (!isMoveMode) {
+                // 设置：第 5 轮起点了**直进设置页**，不再弹菜单
+                FloatingActionButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(56.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.action_settings),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     }
 }

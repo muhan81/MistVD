@@ -461,7 +461,7 @@ class MediaPlaybackService : MediaSessionService() {
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(title)
             .setDisplayTitle(title)
-            .setArtist("NekoVideo")
+            .setArtist("MistVD")
 
         // Keep locked:// URI so HybridDataSource can detect and handle it
         return MediaItem.Builder()
@@ -846,7 +846,7 @@ class MediaPlaybackService : MediaSessionService() {
                     val newMetadata = MediaMetadata.Builder()
                         .setTitle(artworkUpdate.title)
                         .setDisplayTitle(artworkUpdate.title)
-                        .setArtist("NekoVideo")
+                        .setArtist("MistVD")
                         .setArtworkData(artworkUpdate.artworkData, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                         .build()
 

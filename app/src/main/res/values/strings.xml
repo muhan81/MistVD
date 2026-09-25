@@ -546,4 +546,17 @@
     <string name="storage_migration_success">Cofre movido com sucesso</string>
     <string name="storage_migration_failed">Falha ao mover. Seus dados antigos estão intactos.</string>
     <string name="storage_migration_target_exists">O local de destino já tem uma pasta de cofre com conteúdo. Não é possível mover.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Ferramentas</string>
+    <string name="action_rescan">Reanalisar</string>
+    <string name="action_manage_tags">Gerenciar tags</string>
+    <string name="select_items_first">Selecione itens primeiro</string>
+    <string name="rescanning_videos">Reanalisando…</string>
+    <string name="player_repeat_shuffle">Aleatório</string>
+    <string name="playback_long_press_speed">Velocidade ao segurar</string>
+    <string name="playback_long_press_speed_desc">Velocidade enquanto segura a tela</string>
+    <string name="playback_speed_auto_mute_hint">Acima de 2x o áudio é silenciado</string>
+    <string name="player_long_press_speed">Aceleração ao segurar</string>
+
 </resources>

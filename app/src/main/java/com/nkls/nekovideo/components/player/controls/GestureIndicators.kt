@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +49,9 @@ fun GestureIndicators(
     seekInfo: String?,
     seekAlignment: Alignment = Alignment.Center,
     volumeInfo: String? = null,
-    brightnessInfo: String? = null
+    brightnessInfo: String? = null,
+    /** 长按临时加速时的速度角标（第 5 轮），如 "3x"。null = 不显示。 */
+    longPressSpeedInfo: String? = null
 ) {
     var displayedSeekInfo by remember { mutableStateOf<String?>(null) }
     var displayedVolumeInfo by remember { mutableStateOf<String?>(null) }
@@ -177,6 +181,42 @@ fun GestureIndicators(
                     )
                 }
             )
+        }
+
+        // 长按加速角标（第 5 轮）：固定在屏幕上方，刻意不与 seek / 音量 / 亮度抢位置
+        AnimatedVisibility(
+            visible = longPressSpeedInfo != null,
+            enter = fadeIn(animationSpec = tween(120)) + scaleIn(animationSpec = tween(120)),
+            exit = fadeOut(animationSpec = tween(120)) + scaleOut(animationSpec = tween(120)),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            val currentSpeedInfo = longPressSpeedInfo ?: return@AnimatedVisibility
+
+            Surface(
+                modifier = Modifier.padding(top = 72.dp),
+                color = Color.Black.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FastForward,
+                        contentDescription = stringResource(R.string.player_long_press_speed),
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = currentSpeedInfo,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

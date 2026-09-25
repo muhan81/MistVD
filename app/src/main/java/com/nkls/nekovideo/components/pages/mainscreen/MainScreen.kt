@@ -119,6 +119,7 @@ import com.nkls.nekovideo.components.layout.FloatingActionDock
 import com.nkls.nekovideo.components.layout.TopBar
 import com.nkls.nekovideo.components.loadFolderContent
 import com.nkls.nekovideo.components.player.MiniPlayerImproved
+import com.nkls.nekovideo.components.player.RepeatMode
 import com.nkls.nekovideo.components.player.VideoPlayerOverlay
 import com.nkls.nekovideo.components.settings.AboutSettingsScreen
 import com.nkls.nekovideo.components.settings.ChangelogSettingsScreen
@@ -278,6 +279,9 @@ fun MainScreen(
 
     var showVideoTagsDialog by remember { mutableStateOf(false) }
     var showShuffleTagsDialog by remember { mutableStateOf(false) }
+    // 第 5 轮：随机播放（含按标签随机）之后，要求播放器把播放模式同步成"随机"，
+    // 否则换了新列表但模式还是旧的，播到最后一条就停
+    var pendingRepeatModeRequest by remember { mutableStateOf<RepeatMode?>(null) }
     var availableTags by remember { mutableStateOf<List<TagEntity>>(emptyList()) }
     var commonSelectedTagIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var cachedNormalTags by remember { mutableStateOf<List<TagEntity>?>(null) }
@@ -525,6 +529,9 @@ fun MainScreen(
                 castManager.castPlaylist(shuffled, titles, 0)
             } else {
                 PlaylistManager.setPlaylist(shuffleCandidates, startIndex = 0, shuffle = true)
+                // 让播放器把模式同步成"随机（打乱 + 无限循环）"（第 5 轮）——
+                // 换了新列表但播放器一直在跑，不会重走 setupController。
+                pendingRepeatModeRequest = RepeatMode.SHUFFLE
                 MediaPlaybackService.startWithPlaylist(context, PlaylistManager.getFullPlaylist(), 0)
                 openPlayerOverlay()
             }
@@ -563,6 +570,17 @@ fun MainScreen(
             SortRowMessageCenter.showInfo(context.getString(R.string.secure_folders_hidden))
         } else {
             showPasswordDialog = true
+        }
+    }
+
+    /**
+     * 全选当前文件夹的可见条目。
+     * 顶栏的「全选」图标与工具箱里的「全选」共用同一份逻辑（第 5 轮抽出）。
+     */
+    fun selectAllVisibleItems() {
+        if (currentRoute == "folder" && visibleFolderItems.isNotEmpty()) {
+            selectedItems.clear()
+            selectedItems.addAll(visibleFolderItems)
         }
     }
 
@@ -856,6 +874,12 @@ fun MainScreen(
             onManageTags = {
                 invalidateTagCaches()
                 navController.navigate("settings/tags")
+            },
+            // 就地新建标签（第 5 轮）：作用域跟随当前环境（普通 / 私密）
+            onCreateTag = { name ->
+                withContext(Dispatchers.IO) {
+                    VideoTagStore.createTag(context, name, currentTagScope())
+                }
             },
             onSave = { selectedTagIds ->
                 if (targetVideos.isEmpty()) {
@@ -1262,12 +1286,8 @@ fun MainScreen(
                             showFabMenu = false
                             showRenameDialog = false
                         },
-                        onSelectAll = {
-                            if (currentRoute == "folder" && visibleFolderItems.isNotEmpty()) {
-                                selectedItems.clear()
-                                selectedItems.addAll(visibleFolderItems)
-                            }
-                        },
+                        onSelectAll = { selectAllVisibleItems() },
+                        onCreateFolder = { showCreateFolderDialog = true },
                         isAtRootLevel = isAtRootLevel,
                         onNavigateToPath = { path ->
                             selectedItems.clear()
@@ -1502,7 +1522,18 @@ fun MainScreen(
                         "application/octet-stream"
                     )
                 )
-            }
+            },
+            // 长按播放器里的"播放模式"按钮 = 按标签随机（第 5 轮）。
+            // 复用 MainScreen 既有流程：收集当前文件夹（含子文件夹）全部视频 →
+            // 按标签筛选 → 打乱 → 重建播放列表。随机态会自动带"无限循环"。
+            onShuffleByTagsRequest = {
+                coroutineScope.launch {
+                    availableTags = getCachedTags(currentTagScope())
+                    showShuffleTagsDialog = true
+                }
+            },
+            repeatModeRequest = pendingRepeatModeRequest,
+            onRepeatModeRequestHandled = { pendingRepeatModeRequest = null }
         )
 
     }
@@ -1514,7 +1545,9 @@ fun MainScreen(
                     .windowInsetsPadding(WindowInsets.systemBars),
                 isVaultUnlocked = showPrivateFolders,
                 onVaultClick = { requestVaultToggle() },
-                settingsFab = {
+                onSettingsClick = { navController.navigate("settings") },
+                isMoveMode = isMoveMode,
+                toolboxFab = {
                 ActionFAB(
                     hasSelectedItems = selectedItems.isNotEmpty(),
                     isMoveMode = isMoveMode,
@@ -1542,6 +1575,14 @@ fun MainScreen(
                             ActionType.SETTINGS -> {
                                 navController.navigate("settings")
                             }
+                            // ===== 工具箱（第 5 轮新增的三项，不需要选中项）=====
+                            ActionType.SELECT_ALL -> selectAllVisibleItems()
+                            ActionType.RESCAN -> {
+                                quickRefresh()
+                                SortRowMessageCenter.showInfo(context.getString(R.string.rescanning_videos))
+                            }
+                            ActionType.MANAGE_TAGS -> navController.navigate("settings/tags")
+                            // =====================================================
                             ActionType.UNLOCK -> { /* Removed - use MOVE instead */ }
                             ActionType.SECURE -> {
                                 val itemsToSecure = selectedItems.toList()
@@ -1737,6 +1778,11 @@ fun MainScreen(
                                 showShuffleTagsDialog = true
                             }
                         }
+                    },
+                    // 工具箱里"需要先选中"的项（删除/重命名/移动/分享/标签）在未选中时置灰，
+                    // 点了给一句提示，免得用户以为界面坏了
+                    onDisabledActionClick = {
+                        SortRowMessageCenter.showInfo(context.getString(R.string.select_items_first))
                     }
                 )
                 }

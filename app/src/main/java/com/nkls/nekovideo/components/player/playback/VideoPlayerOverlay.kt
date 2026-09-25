@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -103,6 +104,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -112,6 +114,12 @@ private const val MAX_BUFFERING_RECOVERY_ATTEMPTS = 3
 private const val BUFFERING_UI_STALL_TIMEOUT_MS = 900L
 private const val BUFFERING_PROGRESS_EPSILON_MS = 200L
 private const val VERTICAL_GESTURE_FULL_RANGE_RATIO = 0.6f
+
+/**
+ * 长按画面的判定阈值（第 5 轮）。
+ * 按住不超过这个时长就松手 = 单击/双击；超过且没怎么移动 = 长按临时加速。
+ */
+private const val LONG_PRESS_SPEED_TRIGGER_MS = 500L
 
 private data class PreferredTrack(
     val label: String?,
@@ -152,7 +160,22 @@ fun VideoPlayerOverlay(
     selectedExternalSubtitleUri: Uri? = null,
     selectedExternalSubtitleName: String? = null,
     onExternalSubtitleCleared: () -> Unit = {},
-    onExternalSubtitleClick: () -> Unit = {}
+    onExternalSubtitleClick: () -> Unit = {},
+    /**
+     * 长按"播放模式"按钮时触发（第 5 轮新增）= **按标签随机**。
+     * 由宿主（MainScreen）负责弹标签筛选窗并重建播放列表 ——
+     * 因为"当前文件夹全部视频"这件事只有宿主知道，播放器只有当前这条列表。
+     */
+    onShuffleByTagsRequest: () -> Unit = {},
+    /**
+     * 宿主要求把播放模式切成指定状态（第 5 轮）。用于"按标签随机 / 工具箱随机播放"之后 ——
+     * 那时播放列表已被换成一条打乱的新列表，但播放器是**已经在跑**的，
+     * 不会重新走 [setupController]，只能靠这个请求把模式同步成"随机"，
+     * 否则新列表播到最后一条就停了。
+     * 处理完必须回调 [onRepeatModeRequestHandled] 清空，避免重复触发。
+     */
+    repeatModeRequest: RepeatMode? = null,
+    onRepeatModeRequestHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -168,6 +191,10 @@ fun VideoPlayerOverlay(
     var shouldResumeAfterTagsDialog by remember { mutableStateOf(false) }
     var shouldResumeAfterOverlayDialog by remember { mutableStateOf(false) }
     var isSpeedDialogOpen by remember { mutableStateOf(false) }
+    // 长按临时加速（第 5 轮）：非空时屏幕上显示一个 "3x" 角标
+    var longPressSpeedIndicator by remember { mutableStateOf<String?>(null) }
+    // 自动静音前记下的音量，用于恢复（防止"静音卡住"）
+    var volumeBeforeAutoMute by remember { mutableStateOf(1f) }
     var currentVideoPath by remember { mutableStateOf("") }
     var currentVideoTagCount by remember { mutableIntStateOf(0) }
     var availableTags by remember { mutableStateOf<List<TagEntity>>(emptyList()) }
@@ -751,18 +778,80 @@ fun VideoPlayerOverlay(
 
     }
 
+    /** 长按角标上的速度文字（"3x" / "1.5x"），整数就不带小数点。 */
+    fun formatSpeedIndicator(speed: PlaybackSpeed): String {
+        val v = speed.value
+        return if (v == v.toInt().toFloat()) "${v.toInt()}x" else "${v}x"
+    }
+
+    /**
+     * 应用播放速度，并处理"高速自动静音"（第 5 轮）。
+     *
+     * ⚠️ 音量必须**成对复原**：进入 >2x 时先记下当时的音量再置 0，回到 ≤2x 时还原。
+     * 少了任何一侧都会出现"静音卡住"（计划 §四.5）。
+     * 用 `controller.volume` 而不是系统音量 —— 只影响本播放器，不动用户的系统设置。
+     */
+    fun applyPlaybackSpeed(speed: PlaybackSpeed) {
+        val controller = mediaController ?: return
+        controller.setPlaybackSpeed(speed.value)
+        if (speed.value > PlaybackSpeed.AUTO_MUTE_ABOVE) {
+            if (controller.volume > 0f) volumeBeforeAutoMute = controller.volume
+            controller.volume = 0f
+        } else if (controller.volume == 0f && volumeBeforeAutoMute > 0f) {
+            controller.volume = volumeBeforeAutoMute
+        }
+    }
+
+    /**
+     * 把播放模式应用到播放器（第 5 轮抽出，供"点按钮切换"与"初始化"共用）。
+     *
+     * ⚠️ [RepeatMode.SHUFFLE] 不是 ExoPlayer 的独立 repeat 常量 —— 它必须同时设置
+     * `shuffleModeEnabled = true` **和** `REPEAT_MODE_ALL`，才是"打乱后无限循环"
+     * （只开 shuffle 而不设 ALL，播到最后一条依然会停）。
+     * 其余三态都要把 shuffle 关掉，否则会留下"上次的随机"没清干净。
+     */
+    fun applyRepeatMode(mode: RepeatMode) {
+        mediaController?.let { controller ->
+            when (mode) {
+                RepeatMode.NONE -> {
+                    controller.shuffleModeEnabled = false
+                    controller.repeatMode = Player.REPEAT_MODE_OFF
+                }
+                RepeatMode.REPEAT_ALL -> {
+                    controller.shuffleModeEnabled = false
+                    controller.repeatMode = Player.REPEAT_MODE_ALL
+                }
+                RepeatMode.REPEAT_ONE -> {
+                    controller.shuffleModeEnabled = false
+                    controller.repeatMode = Player.REPEAT_MODE_ONE
+                }
+                RepeatMode.SHUFFLE -> {
+                    controller.shuffleModeEnabled = true
+                    controller.repeatMode = Player.REPEAT_MODE_ALL
+                }
+            }
+        }
+    }
+
     fun setupController(controller: MediaController) {
         mediaController = controller
         playerView.player = controller
         currentPlaybackState = controller.playbackState
         hasLoadedVideo = controller.currentMediaItem != null
         pendingAutoPlayOnReady = controller.playWhenReady && controller.playbackState != Player.STATE_READY
-        repeatMode = when (controller.repeatMode) {
-            Player.REPEAT_MODE_ALL -> RepeatMode.REPEAT_ALL
-            Player.REPEAT_MODE_ONE -> RepeatMode.REPEAT_ONE
-            else -> RepeatMode.NONE
+        repeatMode = if (PlaylistManager.isShuffleEnabled) {
+            // 这条列表是"随机播放"生成的（工具箱的随机、或长按播放模式按钮的按标签随机）
+            // → 直接进"随机"态（打乱 + 无限循环），而不是播完就停。
+            RepeatMode.SHUFFLE
+        } else {
+            when (controller.repeatMode) {
+                Player.REPEAT_MODE_ALL -> RepeatMode.REPEAT_ALL
+                Player.REPEAT_MODE_ONE -> RepeatMode.REPEAT_ONE
+                else -> RepeatMode.NONE
+            }
         }
-        controller.setPlaybackSpeed(playbackSpeed.value)
+        applyRepeatMode(repeatMode)
+        applyPlaybackSpeed(playbackSpeed)
 
         controller.currentMediaItem?.localConfiguration?.uri?.let { uri ->
             val uriStr = uri.toString()
@@ -962,6 +1051,13 @@ fun VideoPlayerOverlay(
                 availableTagsScope = null
                 onManageTags()
             },
+            // 就地新建标签（第 5 轮）：作用域沿用本播放器当前加载的那套标签
+            onCreateTag = { name ->
+                val scope = availableTagsScope ?: TagScope.NORMAL
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    VideoTagStore.createTag(context, name, scope)
+                }
+            },
             onSave = { selectedTagIds ->
                 val targetVideo = currentVideoPath
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -1074,7 +1170,17 @@ fun VideoPlayerOverlay(
     LaunchedEffect(Unit) {
         val savedSpeed = SettingsManager.getPlaybackSpeed(context)
         playbackSpeed = PlaybackSpeed.entries.find { it.value == savedSpeed } ?: PlaybackSpeed.SPEED_1_00
-        mediaController?.setPlaybackSpeed(playbackSpeed.value)
+        applyPlaybackSpeed(playbackSpeed)
+    }
+
+    // 宿主要求切换播放模式（第 5 轮）：按标签随机 / 工具箱"随机播放"之后，
+    // 播放列表已被换成一条打乱的新列表，而播放器一直在运行、不会重走 setupController，
+    // 所以要把模式同步成"随机（打乱 + 无限循环）"，否则新列表播到最后一条就停了。
+    LaunchedEffect(repeatModeRequest) {
+        val requested = repeatModeRequest ?: return@LaunchedEffect
+        repeatMode = requested
+        applyRepeatMode(requested)
+        onRepeatModeRequestHandled()
     }
 
     LaunchedEffect(controlsVisible, isPlaying, isSeekingActive) {
@@ -1370,7 +1476,7 @@ fun VideoPlayerOverlay(
                         controller.pause()
                     }
 
-                    controller.setPlaybackSpeed(playbackSpeed.value)
+                    applyPlaybackSpeed(playbackSpeed)
 
                     // ✅ REMOVIDO: A atualização de window agora é centralizada no MediaPlaybackService
                     // Isso evita duplicação de chamadas e dessincronização
@@ -1598,14 +1704,47 @@ fun VideoPlayerOverlay(
                             val edgeMargin = size.width * 0.05f
                             val isNearEdge = down.position.x < edgeMargin || down.position.x > size.width - edgeMargin || down.position.y > size.height - 100.dp.toPx()
 
-                            val touchSlopResult = awaitTouchSlopOrCancellation(down.id) { change, _ ->
-                                if (!isNearEdge) change.consume()
+                            // 长按判定（第 5 轮）：LONG_PRESS_SPEED_TRIGGER_MS 内没突破 touchSlop 即算长按。
+                            // ⚠️ 必须用超时包住 awaitTouchSlopOrCancellation —— 它在"抬手"和
+                            // "一直按住"两种情况下都返回 null，只看返回值分不清；
+                            // 靠 gestureResolved 标记才能区分"手势正常结束"与"超时=长按"。
+                            var touchSlopResult: PointerInputChange? = null
+                            var gestureResolved = false
+                            withTimeoutOrNull(LONG_PRESS_SPEED_TRIGGER_MS) {
+                                touchSlopResult = awaitTouchSlopOrCancellation(down.id) { change, _ ->
+                                    if (!isNearEdge) change.consume()
+                                }
+                                gestureResolved = true
                             }
 
-                            if (touchSlopResult != null) {
+                            // touchSlopResult 是在上面的 lambda 里被赋值的，
+                            // 编译器无法对它做智能转换（mutated in a capturing closure），
+                            // 先取一份不可变快照再判空
+                            val slopChange = touchSlopResult
+
+                            if (!gestureResolved) {
+                                // ===== 长按：临时加速（第 5 轮新增）=====
+                                val boostSpeed = PlaybackSpeed.entries.minByOrNull { speed ->
+                                    abs(speed.value - SettingsManager.getLongPressSpeed(context))
+                                } ?: PlaybackSpeed.SPEED_3_00
+                                applyPlaybackSpeed(boostSpeed)
+                                longPressSpeedIndicator = formatSpeedIndicator(boostSpeed)
+                                // 等松手。期间手指移动**不取消**加速（免得手一抖就掉速），
+                                // 但仍要持续消费事件，别让指针漏给单击/双击逻辑。
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull() ?: break
+                                    change.consume()
+                                } while (change.pressed)
+                                // 松手：回原速 + 清角标 + tapCount 归零，
+                                // 保证这次长按不会被顺带算成一次单击或双击（本轮关键回归点）
+                                applyPlaybackSpeed(playbackSpeed)
+                                longPressSpeedIndicator = null
+                                tapCount = 0
+                            } else if (slopChange != null) {
                                 if (!isNearEdge && !controlsVisible) {
-                                    val initialDragX = touchSlopResult.position.x - downX
-                                    val initialDragY = touchSlopResult.position.y - downY
+                                    val initialDragX = slopChange.position.x - downX
+                                    val initialDragY = slopChange.position.y - downY
                                     val initialPosition = mediaController?.currentPosition ?: 0L
                                     val videoDuration = mediaController?.duration?.takeIf { it > 0 } ?: 0L
                                     val seekSensitivity = screenWidth / 30f
@@ -1772,7 +1911,8 @@ fun VideoPlayerOverlay(
                     seekInfo = seekIndicator,
                     seekAlignment = seekSide,
                     volumeInfo = volumeIndicator,
-                    brightnessInfo = brightnessIndicator
+                    brightnessInfo = brightnessIndicator,
+                    longPressSpeedInfo = longPressSpeedIndicator
                 )
 
                 if (hasLoadedVideo && showBlockingBufferingUi && !isSeekingActive && !isPlaying && !hasRenderedFirstFrame) {
@@ -1845,20 +1985,15 @@ fun VideoPlayerOverlay(
                         repeatMode = repeatMode,
                         onRepeatModeChange = { newMode ->
                             repeatMode = newMode
-
-                            mediaController?.let { controller ->
-                                controller.repeatMode = when (newMode) {
-                                    RepeatMode.NONE -> Player.REPEAT_MODE_OFF
-                                    RepeatMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
-                                    RepeatMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
-                                }
-                            }
+                            applyRepeatMode(newMode)
                         },
+                        // 长按 = 按标签随机（弹窗与重建列表都由宿主负责）
+                        onRepeatModeLongClick = onShuffleByTagsRequest,
                         playbackSpeed = playbackSpeed,
                         onPlaybackSpeedChange = { newSpeed ->
                             playbackSpeed = newSpeed
                             SettingsManager.setPlaybackSpeed(context, newSpeed.value)
-                            mediaController?.setPlaybackSpeed(newSpeed.value)
+                            applyPlaybackSpeed(newSpeed)
                         },
                         onSpeedDialogOpen = {
                             isSpeedDialogOpen = true

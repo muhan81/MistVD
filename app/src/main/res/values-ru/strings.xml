@@ -556,4 +556,17 @@
     <string name="storage_migration_success">Хранилище успешно перемещено</string>
     <string name="storage_migration_failed">Не удалось переместить. Старые данные не тронуты.</string>
     <string name="storage_migration_target_exists">В месте назначения уже есть папка хранилища с содержимым. Перемещение невозможно.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Инструменты</string>
+    <string name="action_rescan">Пересканировать</string>
+    <string name="action_manage_tags">Управление тегами</string>
+    <string name="select_items_first">Сначала выберите элементы</string>
+    <string name="rescanning_videos">Пересканирование…</string>
+    <string name="player_repeat_shuffle">Перемешать</string>
+    <string name="playback_long_press_speed">Скорость при удержании</string>
+    <string name="playback_long_press_speed_desc">Скорость при длительном нажатии на экран</string>
+    <string name="playback_speed_auto_mute_hint">Выше 2x звук отключается</string>
+    <string name="player_long_press_speed">Ускорение при удержании</string>
+
 </resources>

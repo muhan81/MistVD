@@ -531,4 +531,17 @@
     <string name="storage_migration_success">迁移完成</string>
     <string name="storage_migration_failed">迁移失败，旧数据未受影响。</string>
     <string name="storage_migration_target_exists">目标位置已存在有内容的加密库目录，无法迁移。</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">工具箱</string>
+    <string name="action_rescan">重新扫描</string>
+    <string name="action_manage_tags">标签管理</string>
+    <string name="select_items_first">请先选中要操作的文件</string>
+    <string name="rescanning_videos">正在重新扫描…</string>
+    <string name="player_repeat_shuffle">随机播放</string>
+    <string name="playback_long_press_speed">长按播放速度</string>
+    <string name="playback_long_press_speed_desc">在画面上长按时的播放速度</string>
+    <string name="playback_speed_auto_mute_hint">超过 2x 会自动静音</string>
+    <string name="player_long_press_speed">长按加速</string>
+
 </resources>

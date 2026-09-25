@@ -546,4 +546,17 @@
     <string name="storage_migration_success">Vault moved successfully</string>
     <string name="storage_migration_failed">Move failed. Your old data is untouched.</string>
     <string name="storage_migration_target_exists">The destination already has a vault folder with content. Cannot move.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Toolbox</string>
+    <string name="action_rescan">Rescan</string>
+    <string name="action_manage_tags">Manage tags</string>
+    <string name="select_items_first">Select items first</string>
+    <string name="rescanning_videos">Rescanning…</string>
+    <string name="player_repeat_shuffle">Shuffle</string>
+    <string name="playback_long_press_speed">Long-press speed</string>
+    <string name="playback_long_press_speed_desc">Playback speed while long-pressing the screen</string>
+    <string name="playback_speed_auto_mute_hint">Above 2x, audio mutes automatically</string>
+    <string name="player_long_press_speed">Long-press speed</string>
+
 </resources>

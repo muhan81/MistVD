@@ -548,4 +548,17 @@
     <string name="storage_migration_success">Coffre déplacé avec succès</string>
     <string name="storage_migration_failed">Échec du déplacement. Les anciennes données sont intactes.</string>
     <string name="storage_migration_target_exists">La destination contient déjà un dossier de coffre avec du contenu. Déplacement impossible.</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">Boîte à outils</string>
+    <string name="action_rescan">Rescanner</string>
+    <string name="action_manage_tags">Gérer les étiquettes</string>
+    <string name="select_items_first">Sélectionnez d\'abord des éléments</string>
+    <string name="rescanning_videos">Nouvelle analyse…</string>
+    <string name="player_repeat_shuffle">Aléatoire</string>
+    <string name="playback_long_press_speed">Vitesse en appui long</string>
+    <string name="playback_long_press_speed_desc">Vitesse de lecture lors d\'un appui long sur l\'écran</string>
+    <string name="playback_speed_auto_mute_hint">Au-delà de 2x, le son est coupé</string>
+    <string name="player_long_press_speed">Accélération en appui long</string>
+
 </resources>

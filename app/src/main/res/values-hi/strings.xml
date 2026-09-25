@@ -548,4 +548,17 @@
     <string name="storage_migration_success">वॉल्ट सफलतापूर्वक स्थानांतरित हुआ</string>
     <string name="storage_migration_failed">स्थानांतरण विफल। पुराना डेटा सुरक्षित है।</string>
     <string name="storage_migration_target_exists">गंतव्य पर सामग्री वाला वॉल्ट फ़ोल्डर पहले से मौजूद है। स्थानांतरित नहीं किया जा सकता।</string>
+
+    <!-- ===== 第 5 轮新增：工具箱 / 重新扫描 / 长按加速 / 标签就地新建 / 随机播放 ===== -->
+    <string name="toolbox_title">टूलबॉक्स</string>
+    <string name="action_rescan">फिर स्कैन करें</string>
+    <string name="action_manage_tags">टैग प्रबंधित करें</string>
+    <string name="select_items_first">पहले आइटम चुनें</string>
+    <string name="rescanning_videos">फिर स्कैन किया जा रहा है…</string>
+    <string name="player_repeat_shuffle">शफल</string>
+    <string name="playback_long_press_speed">लंबे दबाव पर गति</string>
+    <string name="playback_long_press_speed_desc">स्क्रीन पर लंबे दबाव के दौरान गति</string>
+    <string name="playback_speed_auto_mute_hint">2x से ऊपर ध्वनि स्वतः म्यूट हो जाती है</string>
+    <string name="player_long_press_speed">लंबे दबाव पर तेज़</string>
+
 </resources>
