@@ -606,4 +606,7 @@
     <string name="logs_copied">Copiado al portapapeles</string>
     <string name="logs_privacy_hint">El registro contiene rutas de archivos. Confirma antes de compartir.</string>
     <string name="logs_row_title">Línea completa</string>
+    <string name="logs_level_hint">Menos nivel = menos registros. Use DEBUG o VERBOSE al investigar la reproducción.</string>
+    <string name="logs_level_bad">El nivel es demasiado alto: las líneas INFO/DEBUG no se registran, los recuentos del resumen se vuelven ceros falsos y la conclusión no es fiable. Cambie a DEBUG y repita.</string>
+    <string name="logs_level_bad_msg">El nivel de registro es %1$s, inferior al DEBUG necesario para el diagnóstico. Faltan eventos clave y el resumen no es fiable. Cambie a DEBUG y repita los pasos antes de exportar. ¿Exportar de todos modos?</string>
 </resources>

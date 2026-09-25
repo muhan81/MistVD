@@ -155,6 +155,20 @@ object TaskLogger {
     /** 截断时保留的头部比例（其余留给尾部）。尾部必须保：异常的 `cause=` 总排在末尾。 */
     private const val CLIP_HEAD_RATIO = 0.6
 
+    /**
+     * ★ 第 10 轮：**诊断摘要成立所需的最低日志级别**。
+     *
+     * 为什么是 DEBUG 而不是 INFO：`KEY_EVENTS` 里的关键事件并不都在同一档 ——
+     * `setVideoEffects.start/.done`、`onRenderedFirstFrame`、`onVideoSizeChanged`、
+     * `onSurfaceSizeChanged`、`decoderInitialized` 是 INFO 级；但 `player.rebuild` 是 **WARN**，
+     * 而 `setVideoEffects.skip` 有一条分支（`MediaPlaybackService` 里"参数没变就跳过"那条）是
+     * **DEBUG** 级。取最啰嗦的那一档，才能保证一条都不缺。
+     *
+     * ⇒ 级别高于 DEBUG（即 ERROR / WARN / INFO）时，摘要里必然出现"假 0 / 假的『无』"，
+     *   必须显式标注**不可信**，并**拒绝输出指向性结论**。
+     */
+    private val DIAGNOSIS_MIN_LEVEL = Level.DEBUG
+
     private val TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
     private val STAMP_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
     private val FULL_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -249,11 +263,15 @@ object TaskLogger {
             writeSessionHeader(ctx)
             // ★ 第 9 轮：把本次**实际生效的日志配置**写进日志本身 ——
             //   业主导出后一眼就能确认"装的是新版、且新上限已生效"，不必问、不必查代码。
-            i(
-                Channel.ENV, "log.config",
+            // ★ 第 10 轮：这一行改为**绕过级别过滤**（走 emit 而不是 i）。
+            //   教训：v1.21.1 真机上业主把级别调成 ERROR 后，这行自证信息直接消失 ——
+            //   连"装的是哪一版、日志上限是多少、当前级别是什么"都无法从日志里确认。
+            emit(
+                Level.INFO, Channel.ENV, "log.config",
                 "maxValueChars=$MAX_VALUE_CHARS clipMode=head${(CLIP_HEAD_RATIO * 100).toInt()}+tail" +
                     " maxMemoryLines=$MAX_MEMORY_LINES maxFileBytes=$MAX_FILE_BYTES" +
-                    " keepLogs=$KEEP_LOG_FILES keepCrash=$KEEP_CRASH_FILES"
+                    " keepLogs=$KEEP_LOG_FILES keepCrash=$KEEP_CRASH_FILES" +
+                    " level=${currentLevel.name} diagnosisMinLevel=${DIAGNOSIS_MIN_LEVEL.name}"
             )
             installCrashHandler()
         } catch (t: Throwable) {
@@ -297,7 +315,9 @@ object TaskLogger {
      */
     fun logStackTrace(channel: String, event: String, throwable: Throwable?) {
         if (throwable == null) return
-        log(Level.ERROR, channel, event, describe(throwable))
+        // ★ 第 10 轮：首行加 `.exo` 后缀 —— 以前它与调用方自己那行**同名**，
+        //   摘要的"错误条数"会把 1 次崩溃算成 2 次（真机实测 2 次崩溃显示成「错误条数：4」）。
+        log(Level.ERROR, channel, "$event.exo", describe(throwable))
         throwable.stackTrace.take(30).forEach { frame ->
             log(Level.ERROR, channel, "$event.at", "  | $frame")
         }
@@ -313,9 +333,60 @@ object TaskLogger {
         }
     }
 
-    /** 核心写入。级别过滤在最前（不拼字符串），全程 try/catch。 */
+    /**
+     * 记录一条事件（含级别过滤）。
+     *
+     * ★ 第 10 轮：**旁路计数先于级别过滤**。
+     *
+     * 以前计数排在过滤之后，业主一按"级别 = ERROR"，计数器就永不累加、环形缓冲里也没有
+     * INFO 行 ⇒ 诊断摘要**整片变成"假 0 / 假的『无』"**，并据此给出**完全错误的指向**。
+     * 实测（v1.21.1 真机日志 `MistVD-log-20260925-204234.txt`）：摘要写着"特效从未启用 ⇒
+     * 指向【H1：美颜开关或 COMMAND_SET_BEAUTY 未生效】"，而同一份日志的崩溃栈里就躺着
+     * `FinalShaderProgramWrapper` —— 那个类**只在特效链非空时才被 Media3 创建**，自相矛盾。
+     *
+     * 结论：计数只回答"事件有没有发生"，与"要不要写盘"是两件事，必须解耦。
+     */
     fun log(level: Level, channel: String, event: String, detail: String? = null) {
+        // ① 先计数（不受级别影响）
+        countEvent(level, event)
+        // ② 再按级别决定这一行要不要产出
         if (level.rank > currentLevel.rank) return
+        emit(level, channel, event, detail)
+    }
+
+    /**
+     * ★ 第 10 轮：旁路计数（**与级别过滤解耦**）。
+     *
+     * 摘要不再依赖"在文本里 grep"：`onPlayerError` 会输出多行堆栈、每帧都含 `E/error `，
+     * 文本数数会把 1 次错误算成 30+ 次。改用显式计数后，规则只有两条：
+     *
+     * 1. **错误**：ERROR 级、且不是"同一条错误的续行" —— `.at` / `.cause` / `.exo` 三种后缀
+     *    都算续行。`.exo` 是本轮新增：`logStackTrace` 的首行以前与调用方那行同名，
+     *    导致 1 次崩溃被算成 2 次。
+     * 2. **关键事件**：事件名命中 [KEY_EVENTS] 白名单，按事件名分别累加。
+     */
+    private fun countEvent(level: Level, event: String) {
+        if (level == Level.ERROR && !isErrorContinuation(event)) {
+            errorEvents.incrementAndGet()
+        }
+        if (event in KEY_EVENTS) {
+            // 用 getOrPut 而不是 computeIfAbsent：后者在部分 Android 版本上会因重入
+            // 抛 ConcurrentModificationException；这里只是计数，非原子也无关紧要。
+            keyEvents.getOrPut(event) { AtomicInteger(0) }.incrementAndGet()
+        }
+    }
+
+    /** 是否是"同一条错误的续行"（堆栈帧 / cause 链 / throwable 摘要行）。 */
+    private fun isErrorContinuation(event: String): Boolean =
+        event.endsWith(".at") || event.endsWith(".cause") || event.endsWith(".exo")
+
+    /**
+     * 真正写入（**不做级别过滤**），全程 try/catch。
+     *
+     * 仅供"必须留下"的自证信息使用（目前只有 `log.config` 一处）。
+     * ⚠️ 千万不要拿它写普通日志 —— 那会让级别开关彻底失效。
+     */
+    private fun emit(level: Level, channel: String, event: String, detail: String? = null) {
         try {
             val line = format(level, channel, event, detail)
 
@@ -324,17 +395,6 @@ object TaskLogger {
                 while (ring.size > MAX_MEMORY_LINES) ring.removeFirst()
             }
             _version.value = _version.value + 1
-
-            // ★ 第 9 轮：旁路计数 —— 摘要不再依赖"在文本里 grep"，
-            //   因此不会被 onPlayerError 的多行堆栈带偏（1 次错误仍只算 1 次）。
-            if (level == Level.ERROR && !event.endsWith(".at") && !event.endsWith(".cause")) {
-                errorEvents.incrementAndGet()
-            }
-            if (event in KEY_EVENTS) {
-                // 用 getOrPut 而不是 computeIfAbsent：后者在部分 Android 版本上会因重入
-                // 抛 ConcurrentModificationException；这里只是计数，非原子也无关紧要。
-                keyEvents.getOrPut(event) { AtomicInteger(0) }.incrementAndGet()
-            }
 
             // 同步吐一份到 logcat：真机排查时用 adb 也能直接看
             Log.println(androidPriority(level), LOGCAT_TAG, line)
@@ -387,6 +447,13 @@ object TaskLogger {
     // ───────────────────────────────────────────────────────────── 级别设置
 
     fun getLevel(): Level = currentLevel
+
+    /** ★ 第 10 轮：诊断摘要成立所需的最低级别（供界面提示用）。 */
+    fun requiredLevelForDiagnosis(): Level = DIAGNOSIS_MIN_LEVEL
+
+    /** ★ 第 10 轮：当前级别是否足以支撑诊断摘要。 */
+    fun isCurrentLevelAdequateForDiagnosis(): Boolean =
+        currentLevel.rank >= DIAGNOSIS_MIN_LEVEL.rank
 
     fun setLevel(context: Context, level: Level) {
         try {
@@ -442,34 +509,66 @@ object TaskLogger {
         val hdrBlocked = has("hdrBlocked=true")
         val glError = has("gl.error") || has("build FAILED")
 
+        // ★ 第 10 轮：级别不足时，下面几乎每一项都会退化成"假 0"，必须当场自我否认。
+        //   注意 `has(...)` 走的是环形缓冲，而缓冲里也只有"过了级别筛选"的行 ⇒ 同样不可信。
+        val levelInsufficient = currentLevel.rank < DIAGNOSIS_MIN_LEVEL.rank
+        fun warn(): String = if (levelInsufficient) "  ⚠不可信（级别不足）" else ""
+
         val sb = StringBuilder()
         sb.append("【诊断摘要】生成于 ")
         sb.append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
         sb.append('\n')
+        // ★ 第 10 轮 新增第 0 条：先自报"这份摘要值不值得信"。
+        //   以前没有这一条，级别被调成 ERROR 后摘要会理直气壮地写出错误指向，把排查带沟里。
+        sb.append("0. 日志级别：").append(currentLevel.name)
+            .append("（诊断需 ").append(DIAGNOSIS_MIN_LEVEL.name).append("）")
+        if (levelInsufficient) {
+            sb.append("  ⚠⚠ 证据不完整：INFO/DEBUG 行**全部未记录** ⇒ 第 1~7 条里的")
+                .append("「0 / 未启用 / 未到达 / 无 / 否」都可能是假值，第 8 条不给结论")
+        } else {
+            sb.append("  ✔ 证据完整")
+        }
+        sb.append('\n')
         sb.append("1. setVideoEffects 调用次数：").append(applyCount)
         if (lastEffects != "-") sb.append("  最后一次特效链：").append(lastEffects)
-        sb.append('\n')
+        sb.append(warn()).append('\n')
         sb.append("2. 特效管线（VideoGraph）：")
-            .append(if (applyCount > 0) "已启用" else "未启用").append('\n')
+            .append(if (applyCount > 0) "已启用" else "未启用").append(warn()).append('\n')
         sb.append("3. onRenderedFirstFrame 首帧：")
-            .append(if (firstFrame) "✔ 已到达" else "✘ 未到达").append('\n')
+            .append(if (firstFrame) "✔ 已到达" else "✘ 未到达").append(warn()).append('\n')
         sb.append("4. 视频尺寸事件：").append(videoSizeEvents)
-            .append("   surface 尺寸事件：").append(surfaceSizeEvents).append('\n')
+            .append("   surface 尺寸事件：").append(surfaceSizeEvents).append(warn()).append('\n')
         sb.append("5. 解码器初始化：")
-            .append(if (decoder != "-") "✔ $decoder" else "✘ 未见初始化记录").append('\n')
+            .append(if (decoder != "-") "✔ $decoder" else "✘ 未见初始化记录").append(warn()).append('\n')
+        // 注：「错误条数」是 ERROR 级事件，级别再高也是真值；被级别掐死的是它后面的
+        //     「播放器重建次数」⇒ warn() 挂在行尾会同时覆盖两者，属可接受的近似。
         sb.append("6. 错误条数：").append(errors)
-            .append("   播放器重建次数：").append(rebuilds).append('\n')
+            .append("   播放器重建次数：").append(rebuilds).append(warn()).append('\n')
         sb.append("7. HDR 是否被阻断：").append(if (hdrBlocked) "是" else "否")
-            .append("   GL 报错：").append(if (glError) "有" else "无").append('\n')
+            .append("   GL 报错：").append(if (glError) "有" else "无").append(warn()).append('\n')
 
         // 8. 自动结论 —— 把候选根因直接收敛到一条
+        //
+        // ★ 第 10 轮的两处修正（都是被真机日志打出来的）：
+        //   ① **级别不足时拒答**：假 0 只会推出假结论，宁可不给结论，也别把人带沟里；
+        //   ② **错误优先于"首帧"**：旧顺序里 firstFrame 分支太靠后，于是"首帧成功、
+        //      72 ms 后崩溃"这种真实形态被判成"未见黑屏"—— 与事实正好相反。
         val verdict = when {
-            applyCount == 0 && !hdrBlocked ->
-                "特效从未启用 ⇒ 指向【H1：美颜开关或 COMMAND_SET_BEAUTY 未生效】"
+            levelInsufficient ->
+                "⚠ 拒绝给结论：本次会话日志级别是 ${currentLevel.name}，低于诊断所需的 " +
+                    "${DIAGNOSIS_MIN_LEVEL.name} 级 ⇒ 关键事件一条都没被记录，任何指向都会是错的。" +
+                    "请到「设置 → 运行日志」把级别调到 ${DIAGNOSIS_MIN_LEVEL.name}，重做后重新导出。"
             hdrBlocked ->
                 "HDR 片源被阻断 ⇒ 指向【H5：HDR 判定】"
             glError ->
-                "自分着色器/GL 有报错 ⇒ 指向【H3：着色器编译或运行失败】"
+                "自研着色器/GL 有报错 ⇒ 指向【H3：着色器编译或运行失败】"
+            errors > 0 && firstFrame ->
+                "已有 $errors 次播放错误，但首帧是到的 ⇒ **不是黑屏，是播到中途崩**，" +
+                    "看 onPlayerError 的 cause 链定案"
+            errors > 0 ->
+                "有 $errors 次播放错误且首帧未到达 ⇒ 指向【H2/H3：渲染输出或着色器】"
+            applyCount == 0 && !hdrBlocked ->
+                "特效从未启用 ⇒ 指向【H1：美颜开关或 COMMAND_SET_BEAUTY 未生效】"
             applyCount > 0 && !firstFrame && surfaceSizeEvents == 0 ->
                 "特效已启用、首帧与 surface 尺寸均未出现 ⇒ 指向【H2：输出 Surface 没接上新 renderer】"
             applyCount > 0 && !firstFrame ->
@@ -477,7 +576,8 @@ object TaskLogger {
             rebuilds >= 3 ->
                 "播放器重建 $rebuilds 次（偏多）⇒ 指向【H6：重建时机/反复重建】"
             firstFrame ->
-                "已拿到首帧，本次会话**未见黑屏**（若业主仍看到黑屏，请确认是否发生在别的会话）"
+                "已拿到首帧且本会话无播放错误 ⇒ 本次会话**未见黑屏**" +
+                    "（若业主仍看到黑屏，请确认是不是发生在别的会话）"
             else -> "证据不足，请连同文件全文一并送检"
         }
         sb.append("8. 自动结论：").append(verdict).append('\n')
@@ -603,7 +703,13 @@ object TaskLogger {
         currentPart = 0
 
         sb.append("Log level: ").append(currentLevel.name)
-            .append("   日志文件: ").append(f.name)
+            .append("  (诊断需 ").append(DIAGNOSIS_MIN_LEVEL.name).append(" 级)")
+        if (currentLevel.rank < DIAGNOSIS_MIN_LEVEL.rank) {
+            // ★ 第 10 轮：级别太高时必须当场自我否认。否则整份日志看起来"很干净"，
+            //   而摘要里全是假 0 与错误指向 —— 那比没有日志更危险。
+            sb.append("  ⚠ 级别过高：INFO/DEBUG 行全部不会写入，本次会话的诊断摘要**不可信**")
+        }
+        sb.append("   日志文件: ").append(f.name)
             .append('\n')
         sb.append("═══")
 

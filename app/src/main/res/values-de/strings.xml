@@ -606,4 +606,7 @@
     <string name="logs_copied">In die Zwischenablage kopiert</string>
     <string name="logs_privacy_hint">Das Protokoll enthält Dateipfade. Bitte vor dem Teilen prüfen.</string>
     <string name="logs_row_title">Vollständige Zeile</string>
+    <string name="logs_level_hint">Niedrigeres Niveau = weniger Einträge. Bei Wiedergabeproblemen DEBUG oder VERBOSE verwenden.</string>
+    <string name="logs_level_bad">Niveau zu hoch: INFO/DEBUG-Zeilen werden nicht aufgezeichnet, die Zählungen der Zusammenfassung werden zu falschen Nullen und die Schlussfolgerung ist unzuverlässig. Auf DEBUG umstellen und wiederholen.</string>
+    <string name="logs_level_bad_msg">Das Log-Niveau ist %1$s und damit unter dem für die Diagnose nötigen DEBUG. Wichtige Ereignisse fehlen, die Zusammenfassung ist unzuverlässig. Erst auf DEBUG umstellen und die Schritte wiederholen. Trotzdem exportieren?</string>
 </resources>

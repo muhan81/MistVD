@@ -604,4 +604,7 @@
     <string name="logs_copied">Copied to clipboard</string>
     <string name="logs_privacy_hint">Logs contain file paths. Please check before sharing.</string>
     <string name="logs_row_title">Full line</string>
+    <string name="logs_level_hint">Lower level = fewer records. Use DEBUG or VERBOSE when investigating playback issues.</string>
+    <string name="logs_level_bad">Level is too high: INFO/DEBUG lines are not recorded, so the summary counts become false zeros and its conclusion cannot be trusted. Switch to DEBUG and repeat.</string>
+    <string name="logs_level_bad_msg">The log level is %1$s, below the DEBUG level needed for diagnosis. Key events are missing and the summary cannot be trusted. Please switch to DEBUG and repeat the steps before exporting. Export anyway?</string>
 </resources>

@@ -606,4 +606,7 @@
     <string name="logs_copied">Copié dans le presse-papiers</string>
     <string name="logs_privacy_hint">Le journal contient des chemins de fichiers. Vérifiez avant de partager.</string>
     <string name="logs_row_title">Ligne complète</string>
+    <string name="logs_level_hint">Plus le niveau est bas, moins il y a d\'enregistrements. Utilisez DEBUG ou VERBOSE pour diagnostiquer la lecture.</string>
+    <string name="logs_level_bad">Niveau trop élevé : les lignes INFO/DEBUG ne sont pas enregistrées, les compteurs du résumé deviennent de faux zéros et la conclusion n\'est pas fiable. Passez à DEBUG et recommencez.</string>
+    <string name="logs_level_bad_msg">Le niveau de journal est %1$s, inférieur au niveau DEBUG requis pour le diagnostic. Des événements clés manquent et le résumé n\'est pas fiable. Passez d\'abord à DEBUG et recommencez les étapes. Exporter quand même ?</string>
 </resources>

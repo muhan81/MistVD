@@ -604,4 +604,7 @@
     <string name="logs_copied">Copiado para a área de transferência</string>
     <string name="logs_privacy_hint">O log contém caminhos de arquivo. Confirme antes de compartilhar.</string>
     <string name="logs_row_title">Linha completa</string>
+    <string name="logs_level_hint">Nível mais baixo = menos registros. Para investigar reprodução use DEBUG ou VERBOSE.</string>
+    <string name="logs_level_bad">Nível alto demais: linhas INFO/DEBUG não são gravadas, as contagens do resumo viram zeros falsos e a conclusão não é confiável. Mude para DEBUG e repita.</string>
+    <string name="logs_level_bad_msg">O nível de log é %1$s, abaixo do DEBUG necessário para diagnóstico. Faltam eventos importantes e o resumo não é confiável. Mude para DEBUG e repita os passos antes de exportar. Exportar mesmo assim?</string>
 </resources>

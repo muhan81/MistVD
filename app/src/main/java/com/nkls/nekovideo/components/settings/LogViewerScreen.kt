@@ -78,6 +78,9 @@ fun LogViewerScreen() {
     var level by remember { mutableStateOf(TaskLogger.getLevel()) }
     var lines by remember { mutableStateOf(TaskLogger.snapshot(MAX_UI_LINES)) }
     var showClearConfirm by remember { mutableStateOf(false) }
+    // ★ 第 10 轮：级别不足时导出前先拦一道 —— 否则导出的就是一份"看着正常、结论全错"的文件
+    var showLevelWarn by remember { mutableStateOf(false) }
+    var levelWarnBypassed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     // ★ 第 9 轮：点某一行 → 弹窗看**全文**。
     //   原来每行只显示 2 行就省略号（界面里的第二层截断），业主在界面上看不到全貌，
@@ -95,6 +98,11 @@ fun LogViewerScreen() {
 
     fun exportToPublic() {
         if (busy) return
+        // ★ 第 10 轮：级别太高时先劝一次（业主仍可点"仍然导出"）
+        if (level.rank < TaskLogger.requiredLevelForDiagnosis().rank && !levelWarnBypassed) {
+            showLevelWarn = true
+            return
+        }
         scope.launch {
             busy = true
             val file = withContext(Dispatchers.IO) { LogExporter.exportToPublic(context) }
@@ -177,12 +185,29 @@ fun LogViewerScreen() {
                         onClick = {
                             level = item
                             TaskLogger.setLevel(context, item)
+                            // 级别换了 ⇒ 上次"仍然导出"的许可作废
+                            levelWarnBypassed = false
                         },
                         label = { Text(item.name, fontSize = 11.sp) }
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // ②-b ★ 第 10 轮：级别不是"日志好不好看"的开关，而是"**证据多与少**"的开关。
+        //   真机事故：级别被调到 ERROR 后，摘要第 1~7 条几乎全变成假 0，第 8 条还据此给出
+        //   **完全错误的指向**（"特效从未启用"，与同一份日志的崩溃栈自相矛盾）。
+        val levelInsufficient = level.rank < TaskLogger.requiredLevelForDiagnosis().rank
+        Text(
+            text = stringResource(
+                if (levelInsufficient) R.string.logs_level_bad else R.string.logs_level_hint
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (levelInsufficient) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -260,6 +285,29 @@ fun LogViewerScreen() {
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+
+    // ★ 第 10 轮：级别不足时的导出前置提醒（拦的是"导出一份结论全错的日志"这件事）
+    if (showLevelWarn) {
+        AlertDialog(
+            onDismissRequest = { showLevelWarn = false },
+            title = { Text(stringResource(R.string.logs_level_bad)) },
+            text = { Text(stringResource(R.string.logs_level_bad_msg, TaskLogger.getLevel().name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLevelWarn = false
+                    levelWarnBypassed = true
+                    exportToPublic()
+                }) {
+                    Text(stringResource(R.string.logs_export))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLevelWarn = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }

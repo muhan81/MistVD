@@ -606,4 +606,7 @@
     <string name="logs_copied">क्लिपबोर्ड पर कॉपी किया गया</string>
     <string name="logs_privacy_hint">लॉग में फ़ाइल पथ शामिल हैं। साझा करने से पहले जाँच लें।</string>
     <string name="logs_row_title">पूरी पंक्ति</string>
+    <string name="logs_level_hint">स्तर जितना कम, रिकॉर्ड उतने ही कम। प्लेबैक की जाँच के लिए DEBUG या VERBOSE चुनें।</string>
+    <string name="logs_level_bad">स्तर बहुत ऊँचा है: INFO/DEBUG पंक्तियाँ दर्ज नहीं होंगी, सारांश की गिनती झूठे शून्य बन जाएगी और निष्कर्ष अविश्वसनीय होगा। DEBUG पर बदलें और दोहराएँ।</string>
+    <string name="logs_level_bad_msg">लॉग स्तर %1$s है, जो जाँच के लिए आवश्यक DEBUG से कम है। मुख्य घटनाएँ अनुपलब्ध हैं और सारांश अविश्वसनीय है। पहले DEBUG पर बदलें और चरण दोहराएँ। फिर भी निर्यात करें?</string>
 </resources>

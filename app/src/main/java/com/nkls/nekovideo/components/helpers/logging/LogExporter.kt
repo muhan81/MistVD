@@ -46,6 +46,18 @@ object LogExporter {
     /** 单次导出的正文行数上限（防止极端长会话生成一个几十 MB 的文件）。 */
     private const val MAX_BODY_LINES = 20000
 
+    /**
+     * ★ 第 10 轮：导出**最近 N 个会话**（含当前），而不是只导当前这一个。
+     *
+     * 原因：跨会话的多步实验（"开美颜播一次 / 关美颜播一次 / 只美白播一次"）会分别落在
+     * 不同的 `log-*.txt` 里，只导最新一个 ⇒ **前几步的证据全丢**。
+     * 实测：业主按 E1~E4 做了 4 组实验，回传的文件里只有"启动 #4"，**"启动 #3"整份都没拿到**。
+     */
+    private const val MAX_SESSIONS = 3
+
+    /** ★ 第 10 轮：附带最近的 `crash-*.txt`（未捕获异常现场，含崩溃前内存日志）。 */
+    private const val MAX_CRASH_ATTACH = 2
+
     // ───────────────────────────────────────────────────────────── 导出：公共目录
 
     /**
@@ -93,53 +105,111 @@ object LogExporter {
      */
     fun buildExportText(context: Context): String {
         val sb = StringBuilder(64 * 1024)
-        val sessionFile = TaskLogger.currentSessionFile()
+        val sessions = recentSessions(context)
 
         sb.append("MistVD 运行日志导出\n")
         sb.append("生成时间：").append(LocalDateTime.now().format(FULL_FMT)).append('\n')
-        sb.append("来源文件：").append(sessionFile?.name ?: "(本次会话尚未落盘，以下为内存缓冲)").append('\n')
+        sb.append("包含会话（旧→新，最多 ").append(MAX_SESSIONS).append(" 个）：")
+            .append(
+                if (sessions.isEmpty()) "(本次会话尚未落盘，以下为内存缓冲)"
+                else sessions.joinToString("、") { it.name }
+            ).append('\n')
         sb.append("说明：本文件含文件路径等信息，对外分享前请自行确认。\n")
         sb.append("═".repeat(60)).append('\n')
 
-        // ① 诊断摘要
+        // ① 诊断摘要（针对**当前会话**）
         sb.append(TaskLogger.buildSummary())
         sb.append("═".repeat(60)).append('\n')
 
-        // ② 日志正文
+        // ② 日志正文（最近 MAX_SESSIONS 个会话，按时间升序拼在一起）
         sb.append("【日志正文】\n")
-        val body = readBody(context, sessionFile)
+        val body = readBody(sessions)
         sb.append(body)
         if (!body.endsWith("\n")) sb.append('\n')
+
+        // ③ 崩溃现场 —— 以前只在会话头里写一句"见 crash-*.txt"，却从不把文件带出来，
+        //    等于让业主自己去文件管理器里翻。
+        sb.append("═".repeat(60)).append('\n')
+        appendCrashes(sb, context)
 
         return sb.toString()
     }
 
     /**
-     * 取正文：优先读**文件**（比内存缓冲全），读不到再退回内存快照。
+     * 取正文：把 [sessions]（旧→新）的**全部分卷**按顺序拼起来；一个文件都没有时退回内存快照。
+     *
+     * ★ 第 9 轮修的是"只读主卷、丢了分卷"，★ 第 10 轮修的是"只看当前会话、丢了前几次" ——
+     * 同一条"证据别丢"的思路。
      */
-    private fun readBody(context: Context, sessionFile: File?): String {
+    private fun readBody(sessions: List<File>): String {
         try {
-            // ★ 第 9 轮修复：以前只读**主卷** `log-<stamp>.txt`。
-            //   日志超过 1 MB 会自动分卷（`log-<stamp>-p2.txt` …），而那些分卷
-            //   **完全不会进导出文件** —— 等于悄悄丢掉后半段。现在按序号全部拼起来。
-            val parts = sessionParts(sessionFile)
-            if (parts.isNotEmpty()) {
-                val sb = StringBuilder(256 * 1024)
-                var emitted = 0
-                for (part in parts) {
+            val sb = StringBuilder(256 * 1024)
+            var emitted = 0
+            outer@ for (f in sessions) {
+                // 日志超过 1 MB 会自动分卷（`log-<stamp>-p2.txt` …），按序号升序全部拼上
+                for (part in sessionParts(f)) {
                     for (line in part.readLines()) {
-                        if (emitted >= MAX_BODY_LINES) break
+                        if (emitted >= MAX_BODY_LINES) break@outer
                         sb.append(line).append('\n')
                         emitted++
                     }
                 }
-                if (sb.isNotEmpty()) return sb.toString()
             }
+            if (sb.isNotEmpty()) return sb.toString()
         } catch (_: Throwable) {
         }
         // 退路：内存缓冲（例如文件还没被写入线程创建出来）
         val mem = TaskLogger.snapshot(maxLines = 0)
         return if (mem.isEmpty()) "(本次会话暂无日志)\n" else mem.joinToString("\n")
+    }
+
+    /**
+     * ★ 第 10 轮：最近 [MAX_SESSIONS] 个会话的**主卷**，按时间**升序**（旧→新）返回。
+     *
+     * 会话主卷名是 `log-yyyyMMdd-HHmmss.txt` ⇒ 字典序 = 时间序，直接按名排序即可，
+     * 不必读文件时间戳。分卷 `-pN` 必须排除：它们由 [sessionParts] 逐会话带出来，
+     * 否则会被当成独立会话重复计入。
+     */
+    private fun recentSessions(context: Context): List<File> {
+        val dir = TaskLogger.logsDirectory(context)
+        if (!dir.isDirectory) return emptyList()
+        val mains = dir.listFiles { f ->
+            f.isFile && f.name.startsWith("log-") && f.name.endsWith(".txt") &&
+                !f.name.substringBeforeLast('.').contains("-p")
+        } ?: return emptyList()
+        return mains.sortedByDescending { it.name }
+            .take(MAX_SESSIONS)
+            .sortedBy { it.name }
+    }
+
+    /** ★ 第 10 轮：把最近的 `crash-*.txt` 附在导出文件末尾（每个最多 2500 行）。 */
+    private fun appendCrashes(sb: StringBuilder, context: Context) {
+        val dir = TaskLogger.logsDirectory(context)
+        val crashes = if (dir.isDirectory) {
+            dir.listFiles { f -> f.isFile && f.name.startsWith("crash-") && f.name.endsWith(".txt") }
+                ?.sortedByDescending { it.name }
+                ?.take(MAX_CRASH_ATTACH)
+                ?.sortedBy { it.name }
+                ?: emptyList()
+        } else {
+            emptyList()
+        }
+
+        sb.append("【崩溃现场】")
+        if (crashes.isEmpty()) {
+            sb.append("本机没有 crash-*.txt（= 没有发生过未捕获异常）\n")
+            return
+        }
+        sb.append("最近 ").append(crashes.size).append(" 个 crash-*.txt（旧→新）\n")
+        for (f in crashes) {
+            sb.append('\n').append("───── ").append(f.name).append(" ─────\n")
+            val text = try {
+                f.readText()
+            } catch (_: Throwable) {
+                "(读取失败)\n"
+            }
+            sb.append(text.lines().take(2500).joinToString("\n")).append('\n')
+        }
     }
 
     /**
