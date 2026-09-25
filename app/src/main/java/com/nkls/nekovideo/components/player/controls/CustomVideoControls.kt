@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
+import com.nkls.nekovideo.components.player.beauty.BeautyParams
+import com.nkls.nekovideo.components.player.beauty.BeautyPanel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -62,6 +64,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StayCurrentLandscape
@@ -161,7 +164,16 @@ fun CustomVideoControls(
     sleepTimerEndAtMs: Long,
     onSleepTimerStarted: (Long) -> Unit,
     onSleepTimerCleared: () -> Unit,
-    onSleepTimerConfirmed: () -> Unit
+    onSleepTimerConfirmed: () -> Unit,
+    // ===== 第 6 轮美颜 =====
+    beautyParams: BeautyParams,
+    beautyOnlyThisVideo: Boolean,
+    beautyHdrBlocked: Boolean,
+    onBeautyParamsCommit: (BeautyParams) -> Unit,
+    onBeautyOnlyThisVideoChange: (Boolean) -> Unit,
+    onBeautyReset: () -> Unit,
+    onBeautyDialogOpen: () -> Unit,
+    onBeautyDialogClose: () -> Unit
 ) {
     val controller = mediaController ?: return
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -712,6 +724,48 @@ fun CustomVideoControls(
                                     tint = if (repActive) CtrlIconOn else CtrlIconOff,
                                     modifier = Modifier.size(20.dp)
                                 )
+                            }
+
+                            // Beauty（第 6 轮）
+                            var showBeautyDialog by remember { mutableStateOf(false) }
+                            val beautySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                            val beautyActive = !beautyParams.isDefault
+                            IconButton(
+                                onClick = {
+                                    onBeautyDialogOpen()
+                                    showBeautyDialog = true
+                                },
+                                modifier = Modifier
+                                    .background(if (beautyActive) CtrlBtnBgActive else CtrlBtnBg, CircleShape)
+                                    .size(38.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoFixHigh,
+                                    contentDescription = stringResource(R.string.beauty_title),
+                                    tint = if (beautyActive) CtrlIconOn else CtrlIconOff,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            if (showBeautyDialog) {
+                                AppBottomSheet(
+                                    onDismissRequest = {
+                                        showBeautyDialog = false
+                                        onBeautyDialogClose()
+                                    },
+                                    sheetState = beautySheetState,
+                                    title = stringResource(R.string.beauty_title),
+                                    contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 28.dp)
+                                ) {
+                                    BeautyPanel(
+                                        params = beautyParams,
+                                        onlyThisVideo = beautyOnlyThisVideo,
+                                        hdrBlocked = beautyHdrBlocked,
+                                        onParamsCommit = onBeautyParamsCommit,
+                                        onOnlyThisVideoChange = onBeautyOnlyThisVideoChange,
+                                        onReset = onBeautyReset
+                                    )
+                                }
                             }
                         }
                     }

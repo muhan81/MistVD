@@ -45,3 +45,13 @@
 -keep class com.nkls.nekovideo.services.SerializableVideoInfo { *; }
 -keep class com.nkls.nekovideo.services.FolderInfo { *; }
 -keep class com.nkls.nekovideo.services.VideoInfo { *; }
+
+# Beauty presets (第 6 轮) —— 方案以 JSON 存在 SharedPreferences 里，靠 Gson 读写。
+# 这类字段被重命名会让已保存的方案读不出来（PinnedFolderEntry 就是这么丢的），
+# 所以连同嵌套 DTO 一起 keep，并保留 SerializedName 注解。
+-keep class com.nkls.nekovideo.components.helpers.BeautyPreset { *; }
+-keep class com.nkls.nekovideo.components.helpers.BeautyPresetStore$PresetDto { *; }
+-keep class com.nkls.nekovideo.components.helpers.BeautyPresetStore$BackupPayload { *; }
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}

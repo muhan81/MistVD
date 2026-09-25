@@ -559,4 +559,28 @@
     <string name="playback_speed_auto_mute_hint">Above 2x, audio mutes automatically</string>
     <string name="player_long_press_speed">Long-press speed</string>
 
+    <string name="beauty_title">Beauty</string>
+    <string name="beauty_desc">Skin smoothing, whitening and picture adjustments</string>
+    <string name="beauty_enabled">Enable beauty</string>
+    <string name="beauty_enabled_desc">Apply beauty during playback</string>
+    <string name="beauty_smooth">Skin smoothing</string>
+    <string name="beauty_whiten">Whitening</string>
+    <string name="beauty_rosy">Rosy tone</string>
+    <string name="beauty_sharpen">Sharpen</string>
+    <string name="beauty_brightness">Brightness</string>
+    <string name="beauty_contrast">Contrast</string>
+    <string name="beauty_saturation">Saturation</string>
+    <string name="beauty_only_this_video">This video only</string>
+    <string name="beauty_only_this_video_desc">Applies to this video only; others use the global settings</string>
+    <string name="beauty_reset">Reset</string>
+    <string name="beauty_presets">Presets</string>
+    <string name="beauty_save_preset">Save as preset</string>
+    <string name="beauty_preset_name">Preset name</string>
+    <string name="beauty_preset_empty">No presets yet</string>
+    <string name="beauty_preset_apply">Apply</string>
+    <string name="beauty_preset_duplicate">A preset with that name already exists</string>
+    <string name="beauty_preset_rename_title">Rename preset</string>
+    <string name="beauty_preset_delete_title">Delete preset?</string>
+    <string name="beauty_hdr_unsupported">This video is HDR; beauty is unavailable</string>
+    <string name="beauty_confirm">Confirm</string>
 </resources>

@@ -40,12 +40,24 @@ import com.nkls.nekovideo.components.helpers.ContinueWatchingStore
 import com.nkls.nekovideo.components.helpers.ContinueWatchingEntry
 import com.nkls.nekovideo.components.helpers.ContinueWatchingTrackPreference
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.nkls.nekovideo.components.helpers.BeautySettingsStore
+import com.nkls.nekovideo.components.player.beauty.BeautyEffects
+import com.nkls.nekovideo.components.player.beauty.BeautyParams
 
 @OptIn(UnstableApi::class)
 class MediaPlaybackService : MediaSessionService() {
     companion object {
         private const val DISABLE_PLAYBACK_ARTWORK_REFRESH_FOR_DEBUG = false
         const val COMMAND_APPLY_EXTERNAL_SUBTITLE = "nekovideo.apply_external_subtitle"
+        // ===== 第 6 轮美颜：界面 → 服务的参数下发通道（照抄外部字幕那套范式）=====
+        const val COMMAND_SET_BEAUTY = "nekovideo.set_beauty"
+        const val EXTRA_BEAUTY_SMOOTH = "beauty_smooth"
+        const val EXTRA_BEAUTY_WHITEN = "beauty_whiten"
+        const val EXTRA_BEAUTY_ROSY = "beauty_rosy"
+        const val EXTRA_BEAUTY_SHARPEN = "beauty_sharpen"
+        const val EXTRA_BEAUTY_BRIGHTNESS = "beauty_brightness"
+        const val EXTRA_BEAUTY_CONTRAST = "beauty_contrast"
+        const val EXTRA_BEAUTY_SATURATION = "beauty_saturation"
         const val COMMAND_CLEAR_EXTERNAL_SUBTITLE = "nekovideo.clear_external_subtitle"
         const val EXTRA_SUBTITLE_URI = "subtitle_uri"
         const val EXTRA_SUBTITLE_NAME = "subtitle_name"
@@ -221,7 +233,37 @@ class MediaPlaybackService : MediaSessionService() {
             .build().apply {
                 setAudioAttributes(audioAttributes, true)
                 addListener(playerListener)
+                // 第 6 轮美颜：setVideoEffects 必须在 prepare() 之前**至少调用一次**来建立
+                // 特效管线，之后才能在播放过程中动态改。这里先按当前保存的全局参数装一次
+                // （resolve(path = null) 即"全局参数"，总开关关闭时得到空列表 = 不启用）。
+                runCatching {
+                    setVideoEffects(
+                        BeautyEffects.build(
+                            BeautySettingsStore.resolve(this@MediaPlaybackService, null)
+                        )
+                    )
+                }.onFailure {
+                    Log.e("MediaPlaybackService", "initial setVideoEffects failed", it)
+                }
             }
+    }
+
+    /**
+     * 应用美颜参数（第 6 轮）。
+     *
+     * 之所以必须在这里做、而不是在界面层：`setVideoEffects` 是 **ExoPlayer 独有的方法**，
+     * `MediaController` 上没有；而全项目只有这里持有真正的 ExoPlayer 实例。
+     * 好处是主播放器 / 迷你播放器 / 画中画**一次全部生效**，不必逐个改。
+     *
+     * 失败只记日志、不抛 —— 特效装不上不应该影响正常播放。
+     */
+    private fun applyBeautyEffects(params: BeautyParams) {
+        val currentPlayer = player ?: return
+        runCatching {
+            currentPlayer.setVideoEffects(BeautyEffects.build(params))
+        }.onFailure {
+            Log.e("MediaPlaybackService", "applyBeautyEffects failed", it)
+        }
     }
 
 
@@ -266,6 +308,7 @@ class MediaPlaybackService : MediaSessionService() {
                         .buildUpon()
                         .add(SessionCommand(COMMAND_APPLY_EXTERNAL_SUBTITLE, Bundle.EMPTY))
                         .add(SessionCommand(COMMAND_CLEAR_EXTERNAL_SUBTITLE, Bundle.EMPTY))
+                        .add(SessionCommand(COMMAND_SET_BEAUTY, Bundle.EMPTY))
                         .build()
                 )
                 .setAvailablePlayerCommands(availableCommands)
@@ -331,6 +374,23 @@ class MediaPlaybackService : MediaSessionService() {
                     } else {
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
                     }
+                }
+
+                // 第 6 轮美颜：界面把 7 个参数打包下发，这里直接重建特效链。
+                // 界面侧已保证"松手才提交一次"，所以此处不必再做防抖。
+                COMMAND_SET_BEAUTY -> {
+                    applyBeautyEffects(
+                        BeautyParams(
+                            smooth = args.getFloat(EXTRA_BEAUTY_SMOOTH, 0f),
+                            whiten = args.getFloat(EXTRA_BEAUTY_WHITEN, 0f),
+                            rosy = args.getFloat(EXTRA_BEAUTY_ROSY, 0f),
+                            sharpen = args.getFloat(EXTRA_BEAUTY_SHARPEN, 0f),
+                            brightness = args.getFloat(EXTRA_BEAUTY_BRIGHTNESS, 0f),
+                            contrast = args.getFloat(EXTRA_BEAUTY_CONTRAST, 0f),
+                            saturation = args.getFloat(EXTRA_BEAUTY_SATURATION, 0f)
+                        )
+                    )
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
             }
 

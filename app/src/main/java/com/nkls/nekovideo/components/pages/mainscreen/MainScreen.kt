@@ -126,6 +126,7 @@ import com.nkls.nekovideo.components.settings.ChangelogSettingsScreen
 import com.nkls.nekovideo.components.settings.StorageSettingsScreen
 import com.nkls.nekovideo.components.settings.StorageLocationScreen
 import com.nkls.nekovideo.components.settings.TagsSettingsScreen
+import com.nkls.nekovideo.components.player.beauty.BeautySettingsScreen
 import com.nkls.nekovideo.components.settings.DisplaySettingsScreen
 import com.nkls.nekovideo.components.settings.InterfaceSettingsScreen
 import com.nkls.nekovideo.components.settings.PlaybackSettingsScreen
@@ -1436,6 +1437,9 @@ fun MainScreen(
                 }
                 composable("settings/storage/location") {
                     StorageLocationScreen()
+                }
+                composable("settings/beauty") {
+                    BeautySettingsScreen()
                 }
                 composable("settings/tags") {
                     TagsSettingsScreen()

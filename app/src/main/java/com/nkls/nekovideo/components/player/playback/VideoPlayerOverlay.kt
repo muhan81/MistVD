@@ -95,6 +95,8 @@ import com.nkls.nekovideo.components.helpers.PlaylistNavigator
 import com.nkls.nekovideo.components.helpers.TagEntity
 import com.nkls.nekovideo.components.helpers.TagScope
 import com.nkls.nekovideo.components.helpers.VideoTagStore
+import com.nkls.nekovideo.components.helpers.BeautySettingsStore
+import com.nkls.nekovideo.components.player.beauty.BeautyParams
 import com.nkls.nekovideo.components.player.PlayerUtils.findActivity
 import com.nkls.nekovideo.components.settings.SettingsManager
 import com.nkls.nekovideo.services.FolderVideoScanner
@@ -191,6 +193,13 @@ fun VideoPlayerOverlay(
     var shouldResumeAfterTagsDialog by remember { mutableStateOf(false) }
     var shouldResumeAfterOverlayDialog by remember { mutableStateOf(false) }
     var isSpeedDialogOpen by remember { mutableStateOf(false) }
+    // ===== 第 6 轮美颜 =====
+    // 当前视频实际生效的参数（单视频 > 全局 > 全关，由 BeautySettingsStore.resolve 决定）
+    var beautyParams by remember { mutableStateOf(BeautyParams.DEFAULT) }
+    var beautyOnlyThisVideo by remember { mutableStateOf(false) }
+    var isBeautyDialogOpen by remember { mutableStateOf(false) }
+    // 检测到 HDR 片源时置真：本次播放不启用美颜，并在面板里给出一次说明
+    var beautyHdrBlocked by remember { mutableStateOf(false) }
     // 长按临时加速（第 5 轮）：非空时屏幕上显示一个 "3x" 角标
     var longPressSpeedIndicator by remember { mutableStateOf<String?>(null) }
     // 自动静音前记下的音量，用于恢复（防止"静音卡住"）
@@ -471,7 +480,8 @@ fun VideoPlayerOverlay(
                 !showVideoTagsDialog &&
                 !showCastDevicePicker &&
                 !showTrackSelectionDialog &&
-                !isSpeedDialogOpen
+                !isSpeedDialogOpen &&
+                !isBeautyDialogOpen
             ) {
                 controller.play()
             }
@@ -883,6 +893,74 @@ fun VideoPlayerOverlay(
 
     }
 
+    /**
+     * 第 6 轮美颜：把参数下发给服务里的那个唯一播放器。
+     *
+     * 不能直接改本地播放器 —— 界面层拿到的是 `MediaController`，而 `setVideoEffects`
+     * 只存在于 `ExoPlayer` 上。所以走"自定义命令"通道（与外部字幕同一套范式）。
+     */
+    fun applyBeauty(params: BeautyParams) {
+        val controller = mediaController ?: return
+        val args = Bundle().apply {
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SMOOTH, params.smooth)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_WHITEN, params.whiten)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_ROSY, params.rosy)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SHARPEN, params.sharpen)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_BRIGHTNESS, params.brightness)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_CONTRAST, params.contrast)
+            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SATURATION, params.saturation)
+        }
+        controller.sendCustomCommand(
+            SessionCommand(MediaPlaybackService.COMMAND_SET_BEAUTY, Bundle.EMPTY),
+            args
+        )
+    }
+
+    /**
+     * HDR 判定：PQ(ST2084) 与 HLG 都算 HDR。
+     *
+     * 自研的磨皮着色器沿用 GPUPixel 的数学、按 8-bit sRGB 假设写，
+     * 直接吃 HDR 数据会偏色/压暗。所以本轮策略是**检测到就不启用**并给出说明，
+     * 而不是硬扛（正确的 HDR 色彩处理留到第二阶段）。
+     *
+     * ⚠️ 不能写 `controller.videoFormat` —— 那是 `ExoPlayer` 独有的方法，
+     * `MediaController` 上没有。界面层能拿到的只有 `currentTracks`，
+     * 所以这里按轨道类型筛出视频轨再读它的 `colorInfo`（与 [checkAvailableTracks] 同一套写法）。
+     */
+    fun isCurrentVideoHdr(): Boolean {
+        val tracks = mediaController?.currentTracks ?: return false
+        for (group in tracks.groups) {
+            if (group.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until group.length) {
+                val transfer = group.getTrackFormat(i).colorInfo?.colorTransfer
+                if (transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    // 切换视频时重新解析美颜参数并下发 —— "单视频 > 全局 > 全关"的层次在这里落地。
+    // 注意 currentVideoPath 只在 setupController 里被赋值，那时 mediaController 已经就绪，
+    // 所以这里不会出现"参数还没下发"的竞态。
+    LaunchedEffect(currentVideoPath) {
+        if (currentVideoPath.isEmpty()) return@LaunchedEffect
+
+        val hdr = isCurrentVideoHdr()
+        beautyHdrBlocked = hdr
+
+        if (hdr) {
+            beautyParams = BeautyParams.DEFAULT
+            applyBeauty(BeautyParams.DEFAULT)
+        } else {
+            beautyOnlyThisVideo = BeautySettingsStore.hasForVideo(context, currentVideoPath)
+            val resolved = BeautySettingsStore.resolve(context, currentVideoPath)
+            beautyParams = resolved
+            applyBeauty(resolved)
+        }
+    }
+
     LaunchedEffect(Unit) {
         subtitleSizeLevel = SettingsManager.getSubtitleSizeLevel(context)
     }
@@ -958,6 +1036,7 @@ fun VideoPlayerOverlay(
             showCastDevicePicker ||
             showTrackSelectionDialog ||
             isSpeedDialogOpen ||
+            isBeautyDialogOpen ||
             showMissingVideoDialog
     }
 
@@ -989,6 +1068,7 @@ fun VideoPlayerOverlay(
         showCastDevicePicker,
         showTrackSelectionDialog,
         isSpeedDialogOpen,
+        isBeautyDialogOpen,
         showMissingVideoDialog,
         isWaitingForRotationGate
     ) {
@@ -2058,7 +2138,56 @@ fun VideoPlayerOverlay(
                             sleepTimerActive = false
                             sleepTimerEndAtMs = 0L
                         },
-                        onSleepTimerConfirmed = {}
+                        onSleepTimerConfirmed = {},
+                        // ===== 第 6 轮美颜 =====
+                        beautyParams = beautyParams,
+                        beautyOnlyThisVideo = beautyOnlyThisVideo,
+                        beautyHdrBlocked = beautyHdrBlocked,
+                        onBeautyParamsCommit = { newParams ->
+                            beautyParams = newParams
+                            // 用户主动调了参数说明就是想用 —— 顺手把总开关打开，
+                            // 否则"调了没反应"会很难理解。
+                            BeautySettingsStore.setEnabled(context, true)
+                            if (beautyOnlyThisVideo && currentVideoPath.isNotEmpty()) {
+                                BeautySettingsStore.setForVideo(context, currentVideoPath, newParams)
+                            } else {
+                                BeautySettingsStore.setGlobal(context, newParams)
+                            }
+                            applyBeauty(newParams)
+                        },
+                        onBeautyOnlyThisVideoChange = { only ->
+                            beautyOnlyThisVideo = only
+                            if (currentVideoPath.isNotEmpty()) {
+                                if (only) {
+                                    // 把当前这套参数固化成"这个视频专属"
+                                    BeautySettingsStore.setForVideo(context, currentVideoPath, beautyParams)
+                                } else {
+                                    // 取消专属 → 改回跟随全局，界面立即反映全局值
+                                    BeautySettingsStore.clearForVideo(context, currentVideoPath)
+                                    val global = BeautySettingsStore.resolve(context, currentVideoPath)
+                                    beautyParams = global
+                                    applyBeauty(global)
+                                }
+                            }
+                        },
+                        onBeautyReset = {
+                            beautyParams = BeautyParams.DEFAULT
+                            if (beautyOnlyThisVideo && currentVideoPath.isNotEmpty()) {
+                                BeautySettingsStore.setForVideo(context, currentVideoPath, BeautyParams.DEFAULT)
+                            } else {
+                                BeautySettingsStore.setGlobal(context, BeautyParams.DEFAULT)
+                            }
+                            applyBeauty(BeautyParams.DEFAULT)
+                        },
+                        onBeautyDialogOpen = {
+                            isBeautyDialogOpen = true
+                            pausePlaybackForOverlayDialog()
+                            resetUITimer()
+                        },
+                        onBeautyDialogClose = {
+                            isBeautyDialogOpen = false
+                            resumePlaybackAfterOverlayDialog()
+                        }
                     )
                 }
             }

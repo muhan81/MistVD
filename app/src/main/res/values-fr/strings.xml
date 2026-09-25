@@ -561,4 +561,28 @@
     <string name="playback_speed_auto_mute_hint">Au-delà de 2x, le son est coupé</string>
     <string name="player_long_press_speed">Accélération en appui long</string>
 
+    <string name="beauty_title">Beauté</string>
+    <string name="beauty_desc">Lissage de peau, blanchiment et réglages d\'image</string>
+    <string name="beauty_enabled">Activer la beauté</string>
+    <string name="beauty_enabled_desc">Appliquer la beauté pendant la lecture</string>
+    <string name="beauty_smooth">Lissage de peau</string>
+    <string name="beauty_whiten">Blanchiment</string>
+    <string name="beauty_rosy">Teint rosé</string>
+    <string name="beauty_sharpen">Netteté</string>
+    <string name="beauty_brightness">Luminosité</string>
+    <string name="beauty_contrast">Contraste</string>
+    <string name="beauty_saturation">Saturation</string>
+    <string name="beauty_only_this_video">Cette vidéo uniquement</string>
+    <string name="beauty_only_this_video_desc">S\'applique uniquement à cette vidéo ; les autres utilisent les réglages globaux</string>
+    <string name="beauty_reset">Réinitialiser</string>
+    <string name="beauty_presets">Préréglages</string>
+    <string name="beauty_save_preset">Enregistrer comme préréglage</string>
+    <string name="beauty_preset_name">Nom du préréglage</string>
+    <string name="beauty_preset_empty">Aucun préréglage</string>
+    <string name="beauty_preset_apply">Appliquer</string>
+    <string name="beauty_preset_duplicate">Un préréglage de ce nom existe déjà</string>
+    <string name="beauty_preset_rename_title">Renommer le préréglage</string>
+    <string name="beauty_preset_delete_title">Supprimer le préréglage ?</string>
+    <string name="beauty_hdr_unsupported">Cette vidéo est HDR ; la beauté est indisponible</string>
+    <string name="beauty_confirm">Confirmer</string>
 </resources>

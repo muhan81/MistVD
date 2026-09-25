@@ -559,4 +559,28 @@
     <string name="playback_speed_auto_mute_hint">Acima de 2x o áudio é silenciado</string>
     <string name="player_long_press_speed">Aceleração ao segurar</string>
 
+    <string name="beauty_title">Beleza</string>
+    <string name="beauty_desc">Suavização de pele, clareamento e ajustes de imagem</string>
+    <string name="beauty_enabled">Ativar beleza</string>
+    <string name="beauty_enabled_desc">Aplicar beleza durante a reprodução</string>
+    <string name="beauty_smooth">Suavização de pele</string>
+    <string name="beauty_whiten">Clareamento</string>
+    <string name="beauty_rosy">Tom rosado</string>
+    <string name="beauty_sharpen">Nitidez</string>
+    <string name="beauty_brightness">Brilho</string>
+    <string name="beauty_contrast">Contraste</string>
+    <string name="beauty_saturation">Saturação</string>
+    <string name="beauty_only_this_video">Somente este vídeo</string>
+    <string name="beauty_only_this_video_desc">Aplica só a este vídeo; os outros usam o global</string>
+    <string name="beauty_reset">Redefinir</string>
+    <string name="beauty_presets">Predefinições</string>
+    <string name="beauty_save_preset">Salvar como predefinição</string>
+    <string name="beauty_preset_name">Nome da predefinição</string>
+    <string name="beauty_preset_empty">Nenhuma predefinição ainda</string>
+    <string name="beauty_preset_apply">Aplicar</string>
+    <string name="beauty_preset_duplicate">Já existe uma predefinição com esse nome</string>
+    <string name="beauty_preset_rename_title">Renomear predefinição</string>
+    <string name="beauty_preset_delete_title">Excluir predefinição?</string>
+    <string name="beauty_hdr_unsupported">Este vídeo é HDR; beleza não disponível</string>
+    <string name="beauty_confirm">Confirmar</string>
 </resources>

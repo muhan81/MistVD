@@ -561,4 +561,28 @@
     <string name="playback_speed_auto_mute_hint">Ab 2x wird der Ton stummgeschaltet</string>
     <string name="player_long_press_speed">Beschleunigung bei Langdruck</string>
 
+    <string name="beauty_title">Schönheit</string>
+    <string name="beauty_desc">Hautglättung, Aufhellung und Bildanpassungen</string>
+    <string name="beauty_enabled">Schönheit aktivieren</string>
+    <string name="beauty_enabled_desc">Schönheit während der Wiedergabe anwenden</string>
+    <string name="beauty_smooth">Hautglättung</string>
+    <string name="beauty_whiten">Aufhellung</string>
+    <string name="beauty_rosy">Rosiger Ton</string>
+    <string name="beauty_sharpen">Schärfen</string>
+    <string name="beauty_brightness">Helligkeit</string>
+    <string name="beauty_contrast">Kontrast</string>
+    <string name="beauty_saturation">Sättigung</string>
+    <string name="beauty_only_this_video">Nur dieses Video</string>
+    <string name="beauty_only_this_video_desc">Gilt nur für dieses Video; andere nutzen die globalen Einstellungen</string>
+    <string name="beauty_reset">Zurücksetzen</string>
+    <string name="beauty_presets">Voreinstellungen</string>
+    <string name="beauty_save_preset">Als Voreinstellung speichern</string>
+    <string name="beauty_preset_name">Name der Voreinstellung</string>
+    <string name="beauty_preset_empty">Noch keine Voreinstellungen</string>
+    <string name="beauty_preset_apply">Anwenden</string>
+    <string name="beauty_preset_duplicate">Eine Voreinstellung mit diesem Namen existiert bereits</string>
+    <string name="beauty_preset_rename_title">Voreinstellung umbenennen</string>
+    <string name="beauty_preset_delete_title">Voreinstellung löschen?</string>
+    <string name="beauty_hdr_unsupported">Dieses Video ist HDR; Schönheit nicht verfügbar</string>
+    <string name="beauty_confirm">Bestätigen</string>
 </resources>

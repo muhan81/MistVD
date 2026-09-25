@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
@@ -296,6 +297,17 @@ fun SettingsScreen(navController: NavController) {
                     title = stringResource(R.string.settings_tags),
                     subtitle = stringResource(R.string.settings_tags_desc),
                     onClick = { navController.navigate("settings/tags") },
+                    isCompact = isCompact
+                )
+            }
+
+            item {
+                // 第 6 轮：美颜（全局参数 + 方案管理）
+                SettingsCategoryCard(
+                    icon = Icons.Default.AutoFixHigh,
+                    title = stringResource(R.string.beauty_title),
+                    subtitle = stringResource(R.string.beauty_desc),
+                    onClick = { navController.navigate("settings/beauty") },
                     isCompact = isCompact
                 )
             }

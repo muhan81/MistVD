@@ -25,8 +25,8 @@ android {
         applicationId = "com.nkls.nekovideo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 44
-        versionName = "1.18.5"
+        versionCode = 45
+        versionName = "1.19"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -122,6 +122,9 @@ dependencies {
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.transformer)
+    // 第 6 轮美颜：提供 GlEffect / setVideoEffects 所需的特效体系。
+    // media3-exoplayer 不会自动带上它，必须显式声明，且版本与其余 media3 模块一致。
+    implementation(libs.androidx.media3.effect)
     implementation(libs.material.icons.extended.v168)
 
     implementation(libs.glide)

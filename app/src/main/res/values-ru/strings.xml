@@ -569,4 +569,28 @@
     <string name="playback_speed_auto_mute_hint">Выше 2x звук отключается</string>
     <string name="player_long_press_speed">Ускорение при удержании</string>
 
+    <string name="beauty_title">Красота</string>
+    <string name="beauty_desc">Сглаживание кожи, отбеливание и настройка изображения</string>
+    <string name="beauty_enabled">Включить красоту</string>
+    <string name="beauty_enabled_desc">Применять красоту при воспроизведении</string>
+    <string name="beauty_smooth">Сглаживание кожи</string>
+    <string name="beauty_whiten">Отбеливание</string>
+    <string name="beauty_rosy">Румяный тон</string>
+    <string name="beauty_sharpen">Резкость</string>
+    <string name="beauty_brightness">Яркость</string>
+    <string name="beauty_contrast">Контраст</string>
+    <string name="beauty_saturation">Насыщенность</string>
+    <string name="beauty_only_this_video">Только это видео</string>
+    <string name="beauty_only_this_video_desc">Применяется только к этому видео; остальные используют общие настройки</string>
+    <string name="beauty_reset">Сбросить</string>
+    <string name="beauty_presets">Пресеты</string>
+    <string name="beauty_save_preset">Сохранить как пресет</string>
+    <string name="beauty_preset_name">Название пресета</string>
+    <string name="beauty_preset_empty">Пресетов пока нет</string>
+    <string name="beauty_preset_apply">Применить</string>
+    <string name="beauty_preset_duplicate">Пресет с таким названием уже есть</string>
+    <string name="beauty_preset_rename_title">Переименовать пресет</string>
+    <string name="beauty_preset_delete_title">Удалить пресет?</string>
+    <string name="beauty_hdr_unsupported">Это видео HDR; красота недоступна</string>
+    <string name="beauty_confirm">Подтвердить</string>
 </resources>

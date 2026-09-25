@@ -544,4 +544,28 @@
     <string name="playback_speed_auto_mute_hint">超過 2x 會自動靜音</string>
     <string name="player_long_press_speed">長按加速</string>
 
+    <string name="beauty_title">美顏</string>
+    <string name="beauty_desc">磨皮、美白與畫面調整</string>
+    <string name="beauty_enabled">啟用美顏</string>
+    <string name="beauty_enabled_desc">播放時套用美顏</string>
+    <string name="beauty_smooth">磨皮</string>
+    <string name="beauty_whiten">美白</string>
+    <string name="beauty_rosy">紅潤</string>
+    <string name="beauty_sharpen">銳化</string>
+    <string name="beauty_brightness">亮度</string>
+    <string name="beauty_contrast">對比度</string>
+    <string name="beauty_saturation">飽和度</string>
+    <string name="beauty_only_this_video">僅此影片</string>
+    <string name="beauty_only_this_video_desc">只對當前影片生效，其他影片仍用全域設定</string>
+    <string name="beauty_reset">重置</string>
+    <string name="beauty_presets">方案</string>
+    <string name="beauty_save_preset">儲存為方案</string>
+    <string name="beauty_preset_name">方案名稱</string>
+    <string name="beauty_preset_empty">還沒有方案</string>
+    <string name="beauty_preset_apply">套用</string>
+    <string name="beauty_preset_duplicate">已有同名方案</string>
+    <string name="beauty_preset_rename_title">重新命名方案</string>
+    <string name="beauty_preset_delete_title">刪除該方案？</string>
+    <string name="beauty_hdr_unsupported">該影片為 HDR，暫不支援美顏</string>
+    <string name="beauty_confirm">確定</string>
 </resources>

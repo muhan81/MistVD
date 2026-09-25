@@ -561,4 +561,28 @@
     <string name="playback_speed_auto_mute_hint">2x से ऊपर ध्वनि स्वतः म्यूट हो जाती है</string>
     <string name="player_long_press_speed">लंबे दबाव पर तेज़</string>
 
+    <string name="beauty_title">सौंदर्य</string>
+    <string name="beauty_desc">त्वचा स्मूदिंग, व्हाइटनिंग और तस्वीर समायोजन</string>
+    <string name="beauty_enabled">सौंदर्य सक्षम करें</string>
+    <string name="beauty_enabled_desc">प्लेबैक के दौरान सौंदर्य लागू करें</string>
+    <string name="beauty_smooth">त्वचा स्मूदिंग</string>
+    <string name="beauty_whiten">व्हाइटनिंग</string>
+    <string name="beauty_rosy">गुलाबी रंगत</string>
+    <string name="beauty_sharpen">तीक्ष्णता</string>
+    <string name="beauty_brightness">चमक</string>
+    <string name="beauty_contrast">कंट्रास्ट</string>
+    <string name="beauty_saturation">संतृप्ति</string>
+    <string name="beauty_only_this_video">केवल यह वीडियो</string>
+    <string name="beauty_only_this_video_desc">केवल इस वीडियो पर लागू; अन्य वैश्विक सेटिंग्स उपयोग करते हैं</string>
+    <string name="beauty_reset">रीसेट</string>
+    <string name="beauty_presets">प्रीसेट</string>
+    <string name="beauty_save_preset">प्रीसेट के रूप में सहेजें</string>
+    <string name="beauty_preset_name">प्रीसेट का नाम</string>
+    <string name="beauty_preset_empty">अभी कोई प्रीसेट नहीं</string>
+    <string name="beauty_preset_apply">लागू करें</string>
+    <string name="beauty_preset_duplicate">इस नाम का प्रीसेट पहले से है</string>
+    <string name="beauty_preset_rename_title">प्रीसेट का नाम बदलें</string>
+    <string name="beauty_preset_delete_title">प्रीसेट हटाएं?</string>
+    <string name="beauty_hdr_unsupported">यह वीडियो HDR है; सौंदर्य उपलब्ध नहीं</string>
+    <string name="beauty_confirm">पुष्टि करें</string>
 </resources>
