@@ -607,4 +607,8 @@
     <string name="logs_level_hint">Lower level = fewer records. Use DEBUG or VERBOSE when investigating playback issues.</string>
     <string name="logs_level_bad">Level is too high: INFO/DEBUG lines are not recorded, so the summary counts become false zeros and its conclusion cannot be trusted. Switch to DEBUG and repeat.</string>
     <string name="logs_level_bad_msg">The log level is %1$s, below the DEBUG level needed for diagnosis. Key events are missing and the summary cannot be trusted. Please switch to DEBUG and repeat the steps before exporting. Export anyway?</string>
+    <string name="beauty_skin_unsupported">Smoothing and sharpening are temporarily unavailable (the legacy effect pipeline has been removed); other options are unaffected.</string>
+    <string name="beauty_api31_required">Live beauty filters require Android 12 or later; adjustments have no effect on this device.</string>
+    <string name="player_error_auto_recovered">Playback error — recovered automatically</string>
+    <string name="player_error_give_up">Playback failed repeatedly. Check the video file or try again later.</string>
 </resources>

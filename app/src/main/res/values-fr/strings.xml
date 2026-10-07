@@ -609,4 +609,8 @@
     <string name="logs_level_hint">Plus le niveau est bas, moins il y a d\'enregistrements. Utilisez DEBUG ou VERBOSE pour diagnostiquer la lecture.</string>
     <string name="logs_level_bad">Niveau trop élevé : les lignes INFO/DEBUG ne sont pas enregistrées, les compteurs du résumé deviennent de faux zéros et la conclusion n\'est pas fiable. Passez à DEBUG et recommencez.</string>
     <string name="logs_level_bad_msg">Le niveau de journal est %1$s, inférieur au niveau DEBUG requis pour le diagnostic. Des événements clés manquent et le résumé n\'est pas fiable. Passez d\'abord à DEBUG et recommencez les étapes. Exporter quand même ?</string>
+    <string name="beauty_skin_unsupported">Lissage et netteté temporairement indisponibles (l\'ancien pipeline d\'effets a été supprimé) ; les autres options ne sont pas affectées.</string>
+    <string name="beauty_api31_required">Les filtres de beauté en direct nécessitent Android 12 ou version ultérieure ; les réglages sont sans effet sur cet appareil.</string>
+    <string name="player_error_auto_recovered">Erreur de lecture — récupération automatique</string>
+    <string name="player_error_give_up">La lecture a échoué à plusieurs reprises. Vérifiez le fichier vidéo ou réessayez plus tard.</string>
 </resources>

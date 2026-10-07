@@ -115,6 +115,11 @@ fun BeautySettingsScreen(videoPath: String? = null) {
         global = BeautySettingsStore.getGlobal(context)
     }
 
+    // 第 13 轮（S3 收尾）：API < 31 没有 `RenderEffect` / `View.setRenderEffect`，颜色类滤镜没有落点
+    // ⇒ 与播放器内的面板（BeautyPanel）同款处理：给提示 + 5 个颜色滑块灰显
+    //（磨皮 / 锐化本就恒为禁用，不受这里影响）。
+    val apiOk = BeautyColorFilter.apiOk
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         @Suppress("UnusedBoxWithConstraintsScope")
         val isCompact = this.maxWidth > 600.dp
@@ -220,11 +225,31 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
+                    if (!apiOk) {
+                        Text(
+                            text = stringResource(R.string.beauty_api31_required),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // 第 13 轮（S3，按业主裁决）：磨皮 / 锐化是空间卷积，View 层颜色矩阵做不了，
+                    // 本版本先禁用；数值照旧存储、照旧读回，将来恢复支持即自动生效（存储零迁移）。
+                    Text(
+                        text = stringResource(R.string.beauty_skin_unsupported),
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
                     BeautySlider(
                         label = stringResource(R.string.beauty_smooth),
                         value = global.smooth,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = false,
                         onValueChange = { global = global.copy(smooth = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -232,7 +257,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_whiten),
                         value = global.whiten,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = apiOk,
                         onValueChange = { global = global.copy(whiten = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -240,7 +265,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_rosy),
                         value = global.rosy,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = apiOk,
                         onValueChange = { global = global.copy(rosy = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -248,7 +273,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_sharpen),
                         value = global.sharpen,
                         range = BeautyParams.UNIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = false,
                         onValueChange = { global = global.copy(sharpen = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -256,7 +281,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_brightness),
                         value = global.brightness,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = apiOk,
                         onValueChange = { global = global.copy(brightness = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -264,7 +289,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_contrast),
                         value = global.contrast,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = apiOk,
                         onValueChange = { global = global.copy(contrast = it) },
                         onCommit = { commitParams(global) }
                     )
@@ -272,7 +297,7 @@ fun BeautySettingsScreen(videoPath: String? = null) {
                         label = stringResource(R.string.beauty_saturation),
                         value = global.saturation,
                         range = BeautyParams.BIPOLAR_RANGE,
-                        enabled = true,
+                        enabled = apiOk,
                         onValueChange = { global = global.copy(saturation = it) },
                         onCommit = { commitParams(global) }
                     )

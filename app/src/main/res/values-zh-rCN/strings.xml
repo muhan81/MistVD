@@ -592,4 +592,8 @@
     <string name="logs_level_hint">级别越低记录越少。排查播放问题请用 DEBUG 或 VERBOSE。</string>
     <string name="logs_level_bad">当前级别太高：INFO/DEBUG 行不会记录，诊断摘要里的计数会变成假 0、结论不可信。请改到 DEBUG 后重做。</string>
     <string name="logs_level_bad_msg">当前日志级别为 %1$s，低于排查所需的 DEBUG 级。此时导出的日志缺少关键事件，摘要结论不可信。建议先改到 DEBUG、把操作重做一遍再导出。仍要导出吗？</string>
+    <string name="beauty_skin_unsupported">磨皮与锐化暂不可用（旧特效管线已移除）；其余美颜项不受影响。</string>
+    <string name="beauty_api31_required">实时美颜滤镜需要 Android 12 或更高版本；在当前设备上调整不会生效。</string>
+    <string name="player_error_auto_recovered">播放出错，已自动恢复</string>
+    <string name="player_error_give_up">播放连续失败，请检查视频文件或稍后再试</string>
 </resources>

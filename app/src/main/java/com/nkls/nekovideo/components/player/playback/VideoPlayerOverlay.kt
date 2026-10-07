@@ -98,6 +98,7 @@ import com.nkls.nekovideo.components.helpers.TagScope
 import com.nkls.nekovideo.components.helpers.VideoTagStore
 import com.nkls.nekovideo.components.helpers.BeautySettingsStore
 import com.nkls.nekovideo.components.helpers.logging.TaskLogger
+import com.nkls.nekovideo.components.player.beauty.BeautyColorFilter
 import com.nkls.nekovideo.components.player.beauty.BeautyParams
 import com.nkls.nekovideo.components.player.PlayerUtils.findActivity
 import com.nkls.nekovideo.components.settings.SettingsManager
@@ -922,42 +923,16 @@ fun VideoPlayerOverlay(
     }
 
     /**
-     * 第 6 轮美颜：把参数下发给服务里的那个唯一播放器。
+     * 第 6 轮美颜：把参数应用到**本地 View 层滤镜**（★ 第 13 轮 S1 接线、S2 拆净旧通路）。
      *
-     * 不能直接改本地播放器 —— 界面层拿到的是 `MediaController`，而 `setVideoEffects`
-     * 只存在于 `ExoPlayer` 上。所以走"自定义命令"通道（与外部字幕同一套范式）。
+     * 颜色类 5 项由 [BeautyColorFilter] 合成 ColorMatrix 挂在视频输出面上 ⇒
+     * 调色即时生效、不重建播放器；也不再经过任何会话命令（旧特效管线已在 S2 整体拆除）。
      */
     fun applyBeauty(params: BeautyParams) {
-        val controller = mediaController
-        if (controller == null) {
-            // ★ 第 8 轮：controller 为空 = 这条命令**根本没发出去**。
-            //   日志里没有 command.setBeauty 时，先看有没有这一行，就能立刻区分
-            //   "界面侧断了" 与 "服务侧没响应"。
-            TaskLogger.w(
-                TaskLogger.Channel.UI, "applyBeauty.noController",
-                "mediaController==null ⇒ 命令未下发"
-            )
-            return
-        }
-        val args = Bundle().apply {
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SMOOTH, params.smooth)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_WHITEN, params.whiten)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_ROSY, params.rosy)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SHARPEN, params.sharpen)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_BRIGHTNESS, params.brightness)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_CONTRAST, params.contrast)
-            putFloat(MediaPlaybackService.EXTRA_BEAUTY_SATURATION, params.saturation)
-        }
-        TaskLogger.i(
-            TaskLogger.Channel.UI, "applyBeauty.send",
-            "smooth=${params.smooth} whiten=${params.whiten} rosy=${params.rosy} " +
-                "sharpen=${params.sharpen} bright=${params.brightness} " +
-                "contrast=${params.contrast} sat=${params.saturation}"
-        )
-        controller.sendCustomCommand(
-            SessionCommand(MediaPlaybackService.COMMAND_SET_BEAUTY, Bundle.EMPTY),
-            args
-        )
+        // 目标优先 videoSurfaceView（PlayerView 构造/充气时就建好的那个 TextureView）
+        // ⇒ 只滤视频、不滤字幕；拿不到才回落整只 playerView。
+        // 刻意放在 controller 判空之前：滤镜只依赖 View，与服务连接状态无关，没连上服务也该生效。
+        BeautyColorFilter.applyTo(playerView.videoSurfaceView ?: playerView, params)
     }
 
     /**
@@ -1029,6 +1004,14 @@ fun VideoPlayerOverlay(
             )
             applyBeauty(resolved)
         }
+    }
+
+    // ★ 第 13 轮 S1：兜底重挂 —— 参数状态一变就重新算一遍滤镜，同时覆盖"视图重建后滤镜丢失"
+    //   （playerView 是 remember 的，整块重组时这个副作用会跟着重跑）。
+    //   上面的 applyBeauty 里也挂了一次：那次是"参数通路主动接线"，这次是 Compose 侧的兜底，
+    //   applyTo 幂等，重复挂没有副作用（代价只是多一行 beautyFilter.apply 日志）。
+    LaunchedEffect(beautyParams) {
+        BeautyColorFilter.applyTo(playerView.videoSurfaceView ?: playerView, beautyParams)
     }
 
     LaunchedEffect(Unit) {

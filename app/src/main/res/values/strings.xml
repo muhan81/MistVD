@@ -607,4 +607,8 @@
     <string name="logs_level_hint">Nível mais baixo = menos registros. Para investigar reprodução use DEBUG ou VERBOSE.</string>
     <string name="logs_level_bad">Nível alto demais: linhas INFO/DEBUG não são gravadas, as contagens do resumo viram zeros falsos e a conclusão não é confiável. Mude para DEBUG e repita.</string>
     <string name="logs_level_bad_msg">O nível de log é %1$s, abaixo do DEBUG necessário para diagnóstico. Faltam eventos importantes e o resumo não é confiável. Mude para DEBUG e repita os passos antes de exportar. Exportar mesmo assim?</string>
+    <string name="beauty_skin_unsupported">Suavização e nitidez temporariamente indisponíveis (o antigo pipeline de efeitos foi removido); as demais opções não são afetadas.</string>
+    <string name="beauty_api31_required">Os filtros de beleza em tempo real exigem Android 12 ou superior; os ajustes não têm efeito neste dispositivo.</string>
+    <string name="player_error_auto_recovered">Erro de reprodução — recuperado automaticamente</string>
+    <string name="player_error_give_up">A reprodução falhou repetidamente. Verifique o arquivo de vídeo ou tente novamente mais tarde.</string>
 </resources>

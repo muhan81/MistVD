@@ -36,7 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * ## 一行长什么样
  * ```
- * 18:42:01.123 I/beauty [main/2][+3.412s] setVideoEffects.start effects=3 [BeautyGlEffect, RgbAdjustment]...
+ * 18:42:01.123 I/beauty [main/2][+3.412s] beautyFilter.apply target=TextureView supported=true matrix=on ...
  * ```
  * 四个必备要素：**毫秒时间**、**级别/域**、**线程名+id**（美颜跑在 Media3 的 GL 线程，
  * 与播放逻辑、界面线程的先后顺序是排查核心）、**相对进程启动的偏移秒数**
@@ -57,14 +57,14 @@ import kotlinx.coroutines.flow.asStateFlow
  * ## ★ 事件名契约（[buildSummary] 靠这些词做自动判定，改名必须同步改）
  * | 事件名 | 记在哪 | 摘要里的作用 |
  * |---|---|---|
- * | `setVideoEffects.start` / `.done` | `MediaPlaybackService` | 出现 `.done` 即视作"特效已启用" |
- * | `.done` 的 `detail` 里要有 `effects=<n>` | 同上 | 摘要显示最后一次特效链 |
+ * | `beautyFilter.apply` | `BeautyColorFilter`（View 层滤镜） | ★ 颜色类滤镜是否挂上：`matrix=on` |
+ * | `setVideoEffects.*`（已退役） | `MediaPlaybackService`（旧 GL 管线，已拆） | 摘要第 1/2 条仍会读；v1.21.3 起恒不出现属正常 |
  * | `player.rebuild` | 同上 | 重建次数（≥3 判为 H6） |
  * | `onRenderedFirstFrame` | `Player.Listener` | ★ 首帧是否到达 |
  * | `onVideoSizeChanged` / `onSurfaceSizeChanged` | `Player.Listener` | ★ surface 是否有尺寸 |
  * | `decoderInitialized` + `name=<解码器>` | `AnalyticsListener` | 解码器是否起来 |
  * | `hdrBlocked=true` | `VideoPlayerOverlay` | HDR 阻断（H5） |
- * | `gl.error` / `build FAILED` | `BeautyShaderProgram` | 着色器问题（H3） |
+ * | `gl.error` / `build FAILED` | （历史）`BeautyShaderProgram`（文件已删） | 仅供读旧日志；v1.21.3 起不再产生 |
  *
  * ## 包名注意
  * 本文件在 `helpers/logging/` 目录下，**package 是 `…components.helpers.logging`**
@@ -103,7 +103,7 @@ object TaskLogger {
         /** 渲染：**首帧**、视频尺寸、surface 尺寸、解码器、输入格式、丢帧。 */
         const val RENDER = "render"
 
-        /** 美颜决策链：参数解析、是否建管线、是否真的调了 `setVideoEffects`。 */
+        /** 美颜决策链：参数解析、View 层滤镜是否挂上（`beautyFilter.apply` ⇒ `matrix=on`）。 */
         const val BEAUTY = "beauty"
 
         /** 自研着色器：编译、配置、绘制、GL 错误。 */
@@ -158,11 +158,11 @@ object TaskLogger {
     /**
      * ★ 第 10 轮：**诊断摘要成立所需的最低日志级别**。
      *
-     * 为什么是 DEBUG 而不是 INFO：`KEY_EVENTS` 里的关键事件并不都在同一档 ——
-     * `setVideoEffects.start/.done`、`onRenderedFirstFrame`、`onVideoSizeChanged`、
-     * `onSurfaceSizeChanged`、`decoderInitialized` 是 INFO 级；但 `player.rebuild` 是 **WARN**，
-     * 而 `setVideoEffects.skip` 有一条分支（`MediaPlaybackService` 里"参数没变就跳过"那条）是
-     * **DEBUG** 级。取最啰嗦的那一档，才能保证一条都不缺。
+     * 为什么是 DEBUG 而不是 INFO：摘要各判据的级别并不统一 ——
+     * `beautyFilter.apply`（v1.21.3 起的新判据）、`onRenderedFirstFrame`、`onVideoSizeChanged`、
+     * `onSurfaceSizeChanged`、`decoderInitialized` 是 INFO 级，`player.rebuild` 是 **WARN**，
+     * 而个别"文本搜索类"判据（`has(...)`）落在更啰嗦的档位上。保守取最啰嗦的那一档，
+     * 才能保证一条都不缺（历史事件 `setVideoEffects.*` 已随 GL 管线退役，保留只为读旧日志）。
      *
      * ⇒ 级别高于 DEBUG（即 ERROR / WARN / INFO）时，摘要里必然出现"假 0 / 假的『无』"，
      *   必须显式标注**不可信**，并**拒绝输出指向性结论**。
@@ -181,6 +181,10 @@ object TaskLogger {
      * 改成显式旁路计数后，计数不再受日志格式影响（与 [buildSummary] 配套）。
      */
     private val KEY_EVENTS = setOf(
+        // ★ 第 13 轮 S2：颜色类美颜改走 View 层滤镜 ⇒ 这条事件取代 setVideoEffects.* 成为
+        //   "滤镜到底挂上没挂上"的判据（业主验收口径：搜 beautyFilter.apply 看 matrix=on）。
+        //   下面三条 setVideoEffects.* 保留：历史日志还要读。
+        "beautyFilter.apply",
         "setVideoEffects.done",
         "setVideoEffects.start",
         "setVideoEffects.skip",
@@ -339,10 +343,11 @@ object TaskLogger {
      * ★ 第 10 轮：**旁路计数先于级别过滤**。
      *
      * 以前计数排在过滤之后，业主一按"级别 = ERROR"，计数器就永不累加、环形缓冲里也没有
-     * INFO 行 ⇒ 诊断摘要**整片变成"假 0 / 假的『无』"**，并据此给出**完全错误的指向**。
-     * 实测（v1.21.1 真机日志 `MistVD-log-20260925-204234.txt`）：摘要写着"特效从未启用 ⇒
-     * 指向【H1：美颜开关或 COMMAND_SET_BEAUTY 未生效】"，而同一份日志的崩溃栈里就躺着
-     * `FinalShaderProgramWrapper` —— 那个类**只在特效链非空时才被 Media3 创建**，自相矛盾。
+     * INFO 行 ⇒ 诊断摘要**整片变成"假 0 / 假的『无』"**，并据此给出**完全错误的指向**
+     * （实测 v1.21.1 真机日志：摘要写着"特效从未启用"，而同一份日志的崩溃栈里就躺着
+     * `FinalShaderProgramWrapper` —— 那个类**只在特效链非空时才被 Media3 创建**，自相矛盾）。
+     * 那次指向的分支（"美颜开关未生效 / `COMMAND_SET_BEAUTY`"）已在第 13 轮 S2 随 GL 管线拆除一并删除；
+     * 但**这条教训与架构无关，必须保留**：计数只回答"事件有没有发生"，与"要不要写盘"是两件事。
      *
      * 结论：计数只回答"事件有没有发生"，与"要不要写盘"是两件事，必须解耦。
      */
@@ -530,10 +535,18 @@ object TaskLogger {
         }
         sb.append('\n')
         sb.append("1. setVideoEffects 调用次数：").append(applyCount)
+        // ★ 第 13 轮 S2：特效管线已整体拆除 ⇒ 恒 0 是**预期**，不再是能指向故障的线索。
+        if (applyCount == 0) {
+            sb.append("（v1.21.3 起颜色类走 View 层滤镜，此处恒 0 属正常）")
+        }
         if (lastEffects != "-") sb.append("  最后一次特效链：").append(lastEffects)
         sb.append(warn()).append('\n')
         sb.append("2. 特效管线（VideoGraph）：")
-            .append(if (applyCount > 0) "已启用" else "未启用").append(warn()).append('\n')
+            .append(if (applyCount > 0) "已启用" else "未启用")
+        if (applyCount == 0) {
+            sb.append("（管线已拆除，恒为未启用属正常）")
+        }
+        sb.append(warn()).append('\n')
         sb.append("3. onRenderedFirstFrame 首帧：")
             .append(if (firstFrame) "✔ 已到达" else "✘ 未到达").append(warn()).append('\n')
         sb.append("4. 视频尺寸事件：").append(videoSizeEvents)
@@ -567,8 +580,8 @@ object TaskLogger {
                     "看 onPlayerError 的 cause 链定案"
             errors > 0 ->
                 "有 $errors 次播放错误且首帧未到达 ⇒ 指向【H2/H3：渲染输出或着色器】"
-            applyCount == 0 && !hdrBlocked ->
-                "特效从未启用 ⇒ 指向【H1：美颜开关或 COMMAND_SET_BEAUTY 未生效】"
+            // ★ 第 13 轮 S2：原来的【H1：美颜开关未生效】分支已删除 —— 它假设"特效应走 GL 管线"，
+            //   在 View 层滤镜架构下必然误报（该计数自 v1.21.3 起恒为 0）。
             applyCount > 0 && !firstFrame && surfaceSizeEvents == 0 ->
                 "特效已启用、首帧与 surface 尺寸均未出现 ⇒ 指向【H2：输出 Surface 没接上新 renderer】"
             applyCount > 0 && !firstFrame ->

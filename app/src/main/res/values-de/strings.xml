@@ -609,4 +609,8 @@
     <string name="logs_level_hint">Niedrigeres Niveau = weniger Einträge. Bei Wiedergabeproblemen DEBUG oder VERBOSE verwenden.</string>
     <string name="logs_level_bad">Niveau zu hoch: INFO/DEBUG-Zeilen werden nicht aufgezeichnet, die Zählungen der Zusammenfassung werden zu falschen Nullen und die Schlussfolgerung ist unzuverlässig. Auf DEBUG umstellen und wiederholen.</string>
     <string name="logs_level_bad_msg">Das Log-Niveau ist %1$s und damit unter dem für die Diagnose nötigen DEBUG. Wichtige Ereignisse fehlen, die Zusammenfassung ist unzuverlässig. Erst auf DEBUG umstellen und die Schritte wiederholen. Trotzdem exportieren?</string>
+    <string name="beauty_skin_unsupported">Glättung und Schärfe vorübergehend nicht verfügbar (die alte Effekt-Pipeline wurde entfernt); andere Optionen sind nicht betroffen.</string>
+    <string name="beauty_api31_required">Live-Beauty-Filter erfordern Android 12 oder höher; Anpassungen haben auf diesem Gerät keine Wirkung.</string>
+    <string name="player_error_auto_recovered">Wiedergabefehler — automatisch behoben</string>
+    <string name="player_error_give_up">Wiedergabe wiederholt fehlgeschlagen. Prüfen Sie die Videodatei oder versuchen Sie es später erneut.</string>
 </resources>

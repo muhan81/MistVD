@@ -46,12 +46,25 @@ fun BeautyPanel(
 ) {
     // 外部参数变化时（切视频、套用方案）重新建立草稿，保证界面与实际生效值一致。
     var draft by remember(params) { mutableStateOf(params) }
-    val enabled = !hdrBlocked
+    // 第 13 轮（S3）：API < 31 没有 `RenderEffect` / `View.setRenderEffect`，颜色类滤镜根本没有落点
+    // ⇒ 整个面板灰显并说明原因（目标机是 Android 12；minSdk 30 只是兜底分支）。
+    val apiOk = BeautyColorFilter.apiOk
+    val enabled = !hdrBlocked && apiOk
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (hdrBlocked) {
             Text(
                 text = stringResource(R.string.beauty_hdr_unsupported),
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        if (!apiOk) {
+            Text(
+                text = stringResource(R.string.beauty_api31_required),
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
@@ -71,11 +84,20 @@ fun BeautyPanel(
             )
         }
 
+        // 第 13 轮（S3，按业主裁决）：磨皮 / 锐化是空间卷积，View 层的颜色矩阵做不了，
+        // 本版本先禁用。灰显之外必须说清楚原因，否则用户只会以为调坏了（同 HDR 那条的做法）。
+        Text(
+            text = stringResource(R.string.beauty_skin_unsupported),
+            color = MaterialTheme.colorScheme.error,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
         BeautySlider(
             label = stringResource(R.string.beauty_smooth),
             value = draft.smooth,
             range = BeautyParams.UNIPOLAR_RANGE,
-            enabled = enabled,
+            enabled = false,
             onValueChange = { draft = draft.copy(smooth = it) },
             onCommit = { onParamsCommit(draft) }
         )
@@ -99,7 +121,7 @@ fun BeautyPanel(
             label = stringResource(R.string.beauty_sharpen),
             value = draft.sharpen,
             range = BeautyParams.UNIPOLAR_RANGE,
-            enabled = enabled,
+            enabled = false,
             onValueChange = { draft = draft.copy(sharpen = it) },
             onCommit = { onParamsCommit(draft) }
         )
