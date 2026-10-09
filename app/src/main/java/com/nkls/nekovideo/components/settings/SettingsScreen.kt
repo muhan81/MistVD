@@ -134,6 +134,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private sealed interface PlaybackSettingItem {
     val visible: Boolean
@@ -415,8 +416,9 @@ fun PlaybackSettingsScreen() {
 
     var backgroundPlayback by remember { mutableStateOf(prefs.getBoolean("background_playback", true)) }
     var doubleTapSeek by remember { mutableIntStateOf(prefs.getInt("double_tap_seek", 10)) }
-    // 长按画面的临时加速倍率（第 5 轮），存 Float，界面按整数选（2/3/4）
-    var longPressSpeed by remember { mutableIntStateOf(prefs.getFloat("long_press_speed", 3.0f).toInt()) }
+    // 长按画面的临时加速倍率（第 5 轮；第 14 轮起支持半档 2.5x/3.5x）。
+    // 界面用"十分位整数"编码承载 0.5 步长：20/25/30/35/40 ↔ 2x/2.5x/3x/3.5x/4x；存盘仍是 Float。
+    var longPressSpeed by remember { mutableIntStateOf((prefs.getFloat("long_press_speed", 3.0f) * 10f).roundToInt()) }
     var dragSeekEnabled by remember { mutableStateOf(prefs.getBoolean("drag_seek_enabled", true)) }
     var volumeBrightnessGesturesEnabled by remember { mutableStateOf(prefs.getBoolean("volume_brightness_gestures_enabled", true)) }
     var continueWatchingEnabled by remember {
@@ -459,11 +461,12 @@ fun PlaybackSettingsScreen() {
             subtitleRes = R.string.playback_long_press_speed_desc,
             value = longPressSpeed,
             range = 2..4,
-            discreteValues = listOf(2, 3, 4),
-            valueFormatter = { "${it}x" },
+            // 十分位整数编码：20/25/30/35/40 ↔ 2x/2.5x/3x/3.5x/4x（通用滑块组件保持 Int 不变）
+            discreteValues = listOf(20, 25, 30, 35, 40),
+            valueFormatter = { v -> if (v % 10 == 0) "${v / 10}x" else "${v / 10}.${v % 10}x" },
             onValueChange = {
                 longPressSpeed = it
-                prefs.edit { putFloat("long_press_speed", it.toFloat()) }
+                prefs.edit { putFloat("long_press_speed", it / 10f) }
             }
         ),
         PlaybackSettingItem.Switch(

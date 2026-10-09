@@ -809,9 +809,8 @@ fun VideoPlayerOverlay(
 
     }
 
-    /** 长按角标上的速度文字（"3x" / "1.5x"），整数就不带小数点。 */
-    fun formatSpeedIndicator(speed: PlaybackSpeed): String {
-        val v = speed.value
+    /** 长按角标上的速度文字（"3x" / "2.5x"），整数就不带小数点（第 14 轮起参数为 Float 直通）。 */
+    fun formatSpeedValue(v: Float): String {
         return if (v == v.toInt().toFloat()) "${v.toInt()}x" else "${v}x"
     }
 
@@ -834,21 +833,29 @@ fun VideoPlayerOverlay(
     }
 
     /**
-     * 应用播放速度，并处理"高速自动静音"（第 5 轮）。
+     * 应用播放速度，并处理"高速自动静音"（第 5 轮；第 14 轮抽成 Float 直通版）。
+     *
+     * 长按加速可能落在半档（2.5x / 3.5x —— `PlaybackSpeed` 枚举里只有 2.5x、没有 3.5x），
+     * 所以按数值本身生效，不再"取最近枚举"。
      *
      * ⚠️ 音量必须**成对复原**：进入 >2x 时先记下当时的音量再置 0，回到 ≤2x 时还原。
      * 少了任何一侧都会出现"静音卡住"（计划 §四.5）。
      * 用 `controller.volume` 而不是系统音量 —— 只影响本播放器，不动用户的系统设置。
      */
-    fun applyPlaybackSpeed(speed: PlaybackSpeed) {
+    fun applyPlaybackSpeedValue(value: Float) {
         val controller = mediaController ?: return
-        controller.setPlaybackSpeed(speed.value)
-        if (speed.value > PlaybackSpeed.AUTO_MUTE_ABOVE) {
+        controller.setPlaybackSpeed(value)
+        if (value > PlaybackSpeed.AUTO_MUTE_ABOVE) {
             if (controller.volume > 0f) volumeBeforeAutoMute = controller.volume
             controller.volume = 0f
         } else if (controller.volume == 0f && volumeBeforeAutoMute > 0f) {
             controller.volume = volumeBeforeAutoMute
         }
+    }
+
+    /** 应用播放速度（枚举版）：委托给 [applyPlaybackSpeedValue]。 */
+    fun applyPlaybackSpeed(speed: PlaybackSpeed) {
+        applyPlaybackSpeedValue(speed.value)
     }
 
     /**
@@ -1898,12 +1905,12 @@ fun VideoPlayerOverlay(
                             val slopChange = touchSlopResult
 
                             if (!gestureResolved) {
-                                // ===== 长按：临时加速（第 5 轮新增）=====
-                                val boostSpeed = PlaybackSpeed.entries.minByOrNull { speed ->
-                                    abs(speed.value - SettingsManager.getLongPressSpeed(context))
-                                } ?: PlaybackSpeed.SPEED_3_00
-                                applyPlaybackSpeed(boostSpeed)
-                                longPressSpeedIndicator = formatSpeedIndicator(boostSpeed)
+                                // ===== 长按：临时加速（第 5 轮新增；第 14 轮改 Float 直通）=====
+                                // 设置值可能是 2.5 / 3.5 半档 —— 不再"取最近枚举"（枚举里没有 3.5x），
+                                // 直接按设置里的 Float 生效。
+                                val boostSpeedValue = SettingsManager.getLongPressSpeed(context)
+                                applyPlaybackSpeedValue(boostSpeedValue)
+                                longPressSpeedIndicator = formatSpeedValue(boostSpeedValue)
                                 // 等松手。期间手指移动**不取消**加速（免得手一抖就掉速），
                                 // 但仍要持续消费事件，别让指针漏给单击/双击逻辑。
                                 do {
