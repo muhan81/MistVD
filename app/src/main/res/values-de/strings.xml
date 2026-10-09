@@ -315,6 +315,8 @@
     <string name="playback_drag_seek_desc">Horizontal ziehen, um im Video vor- oder zurückzuspulen</string>
     <string name="playback_volume_brightness_gestures">Gesten für Lautstärke und Helligkeit</string>
     <string name="playback_volume_brightness_gestures_desc">Bei ausgeblendeten Steuerungen seitlich vertikal ziehen, um Lautstärke und Helligkeit anzupassen</string>
+    <string name="playback_auto_rotate_on_switch">Automatisch drehen beim Video-Wechsel</string>
+    <string name="playback_auto_rotate_on_switch_desc">Aus: Beim Video-Wechsel bleibt die aktuelle Bildschirmausrichtung erhalten (Videos mit anderem Seitenverhältnis werden kleiner, mit schwarzen Balken angezeigt)</string>
     <string name="playback_keep_screen_on">Bildschirm an lassen</string>
     <string name="playback_keep_screen_on_desc">Bildschirm während Wiedergabe nicht ausschalten</string>
     <string name="playback_continue_watching">Weiterschauen</string>

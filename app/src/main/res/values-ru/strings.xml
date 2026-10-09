@@ -315,6 +315,8 @@
     <string name="playback_drag_seek_desc">Перетаскивайте горизонтально, чтобы перематывать видео</string>
     <string name="playback_volume_brightness_gestures">Жесты громкости и яркости</string>
     <string name="playback_volume_brightness_gestures_desc">Перетаскивайте вертикально по краям при скрытых элементах управления, чтобы менять громкость и яркость</string>
+    <string name="playback_auto_rotate_on_switch">Автоповорот при смене видео</string>
+    <string name="playback_auto_rotate_on_switch_desc">Выкл.: при смене видео сохраняется текущая ориентация экрана (видео с другим соотношением сторон отображается меньше, с чёрными полосами)</string>
     <string name="playback_keep_screen_on">Не выключать экран</string>
     <string name="playback_keep_screen_on_desc">Не выключать экран во время воспроизведения</string>
     <string name="playback_continue_watching">Продолжить просмотр</string>

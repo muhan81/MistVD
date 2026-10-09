@@ -326,6 +326,8 @@
     <string name="playback_drag_seek_desc">在螢幕上水平拖曳，快轉或倒轉影片</string>
     <string name="playback_volume_brightness_gestures">音量和亮度手勢</string>
     <string name="playback_volume_brightness_gestures_desc">控制項隱藏時在兩側垂直拖曳以調整音量和亮度</string>
+    <string name="playback_auto_rotate_on_switch">切換影片時自動旋轉</string>
+    <string name="playback_auto_rotate_on_switch_desc">關閉後，切換影片時保持目前螢幕方向（比例不同的影片會縮小顯示，帶黑邊）</string>
     <string name="playback_keep_screen_on">保持螢幕常亮</string>
     <string name="playback_keep_screen_on_desc">播放時不關閉螢幕</string>
     <string name="playback_continue_watching">繼續觀看</string>

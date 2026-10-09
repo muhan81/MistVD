@@ -315,6 +315,8 @@
     <string name="playback_drag_seek_desc">Glissez horizontalement pour avancer ou reculer dans la vidéo</string>
     <string name="playback_volume_brightness_gestures">Gestes de volume et luminosité</string>
     <string name="playback_volume_brightness_gestures_desc">Glissez verticalement sur les côtés avec les contrôles masqués pour régler le volume et la luminosité</string>
+    <string name="playback_auto_rotate_on_switch">Rotation automatique lors du changement de vidéo</string>
+    <string name="playback_auto_rotate_on_switch_desc">Désactivé : lors du changement de vidéo, l\'orientation actuelle de l\'écran est conservée (les vidéos de format différent s\'affichent en plus petit, avec des bandes noires)</string>
     <string name="playback_keep_screen_on">Garder lÉcran Allumé</string>
     <string name="playback_keep_screen_on_desc">Ne pas éteindre lécran pendant la lecture</string>
     <string name="playback_continue_watching">Continuer à regarder</string>

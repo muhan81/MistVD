@@ -315,6 +315,8 @@
     <string name="playback_drag_seek_desc">Arrastra horizontalmente para avanzar o retroceder en el video</string>
     <string name="playback_volume_brightness_gestures">Gestos de volumen y brillo</string>
     <string name="playback_volume_brightness_gestures_desc">Arrastra verticalmente en los lados con los controles ocultos para ajustar volumen y brillo</string>
+    <string name="playback_auto_rotate_on_switch">Rotación automática al cambiar de video</string>
+    <string name="playback_auto_rotate_on_switch_desc">Desactivado: al cambiar de video se mantiene la orientación actual de la pantalla (los videos con otra proporción se ven más pequeños, con barras negras)</string>
     <string name="playback_keep_screen_on">Mantener Pantalla Encendida</string>
     <string name="playback_keep_screen_on_desc">No apagar la pantalla durante la reproducción</string>
     <string name="playback_continue_watching">Continuar viendo</string>

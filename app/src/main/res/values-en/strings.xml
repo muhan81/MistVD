@@ -326,6 +326,8 @@
     <string name="playback_drag_seek_desc">Drag horizontally to seek forward or backward in the video</string>
     <string name="playback_volume_brightness_gestures">Volume and brightness gestures</string>
     <string name="playback_volume_brightness_gestures_desc">Drag vertically on the sides with controls hidden to adjust volume and brightness</string>
+    <string name="playback_auto_rotate_on_switch">Auto-rotate when switching videos</string>
+    <string name="playback_auto_rotate_on_switch_desc">Off: keeps the current screen orientation when switching videos (videos with a different aspect ratio appear smaller, with black bars)</string>
     <string name="playback_keep_screen_on">Keep Screen On</string>
     <string name="playback_keep_screen_on_desc">Dont turn off screen during playback</string>
     <string name="playback_continue_watching">Continue Watching</string>

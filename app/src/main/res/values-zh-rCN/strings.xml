@@ -326,6 +326,8 @@
     <string name="playback_drag_seek_desc">在屏幕上水平拖动，快进或快退视频</string>
     <string name="playback_volume_brightness_gestures">音量和亮度手势</string>
     <string name="playback_volume_brightness_gestures_desc">控件隐藏时在两侧垂直拖动以调整音量和亮度</string>
+    <string name="playback_auto_rotate_on_switch">切换视频时自动旋转</string>
+    <string name="playback_auto_rotate_on_switch_desc">关闭后，切换视频时保持当前屏幕方向（比例不同的视频会缩小显示，带黑边）</string>
     <string name="playback_keep_screen_on">保持屏幕常亮</string>
     <string name="playback_keep_screen_on_desc">播放时不关闭屏幕</string>
     <string name="playback_continue_watching">继续观看</string>

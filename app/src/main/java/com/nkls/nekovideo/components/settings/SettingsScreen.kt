@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Fingerprint
@@ -421,6 +422,8 @@ fun PlaybackSettingsScreen() {
     var longPressSpeed by remember { mutableIntStateOf((prefs.getFloat("long_press_speed", 3.0f) * 10f).roundToInt()) }
     var dragSeekEnabled by remember { mutableStateOf(prefs.getBoolean("drag_seek_enabled", true)) }
     var volumeBrightnessGesturesEnabled by remember { mutableStateOf(prefs.getBoolean("volume_brightness_gestures_enabled", true)) }
+    // 切换视频时自动旋转（第 15 轮）：默认开 = 现状行为。关闭后切换视频保持当前屏幕方向。
+    var autoRotateOnVideoSwitch by remember { mutableStateOf(prefs.getBoolean("auto_rotate_on_video_switch", true)) }
     var continueWatchingEnabled by remember {
         mutableStateOf(ContinueWatchingSettings.isEnabled(context))
     }
@@ -487,6 +490,16 @@ fun PlaybackSettingsScreen() {
             onCheckedChange = {
                 volumeBrightnessGesturesEnabled = it
                 prefs.edit { putBoolean("volume_brightness_gestures_enabled", it) }
+            }
+        ),
+        PlaybackSettingItem.Switch(
+            icon = Icons.Default.ScreenRotation,
+            titleRes = R.string.playback_auto_rotate_on_switch,
+            subtitleRes = R.string.playback_auto_rotate_on_switch_desc,
+            checked = autoRotateOnVideoSwitch,
+            onCheckedChange = {
+                autoRotateOnVideoSwitch = it
+                prefs.edit { putBoolean("auto_rotate_on_video_switch", it) }
             }
         ),
         PlaybackSettingItem.Section(R.string.playback_continue_watching),
@@ -2157,6 +2170,12 @@ object SettingsManager {
     fun areVolumeBrightnessGesturesEnabled(context: Context): Boolean {
         return context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE)
             .getBoolean("volume_brightness_gestures_enabled", true)
+    }
+
+    /** 切换视频时自动旋转（第 15 轮）。关闭后切换视频保持当前屏幕方向；默认开。 */
+    fun isAutoRotateOnVideoSwitchEnabled(context: Context): Boolean {
+        return context.getSharedPreferences("nekovideo_settings", Context.MODE_PRIVATE)
+            .getBoolean("auto_rotate_on_video_switch", true)
     }
 
     fun getPlaybackSpeed(context: Context): Float {
