@@ -323,7 +323,7 @@
     <string name="playback_double_tap_seek">双击快进/快退</string>
     <string name="playback_double_tap_seek_desc">快进或快退的秒数</string>
     <string name="playback_drag_seek">拖动快进/快退</string>
-    <string name="playback_drag_seek_desc">控件隐藏时水平拖动以跳转视频</string>
+    <string name="playback_drag_seek_desc">在屏幕上水平拖动，快进或快退视频</string>
     <string name="playback_volume_brightness_gestures">音量和亮度手势</string>
     <string name="playback_volume_brightness_gestures_desc">控件隐藏时在两侧垂直拖动以调整音量和亮度</string>
     <string name="playback_keep_screen_on">保持屏幕常亮</string>

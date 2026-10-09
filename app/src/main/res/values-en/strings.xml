@@ -323,7 +323,7 @@
     <string name="playback_double_tap_seek">Double Tap Seek</string>
     <string name="playback_double_tap_seek_desc">Seconds to skip forward/backward</string>
     <string name="playback_drag_seek">Drag to seek</string>
-    <string name="playback_drag_seek_desc">Drag horizontally with controls hidden to skip through the video</string>
+    <string name="playback_drag_seek_desc">Drag horizontally to seek forward or backward in the video</string>
     <string name="playback_volume_brightness_gestures">Volume and brightness gestures</string>
     <string name="playback_volume_brightness_gestures_desc">Drag vertically on the sides with controls hidden to adjust volume and brightness</string>
     <string name="playback_keep_screen_on">Keep Screen On</string>

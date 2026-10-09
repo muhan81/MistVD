@@ -312,7 +312,7 @@
     <string name="playback_double_tap_seek">डबल टैप सीक</string>
     <string name="playback_double_tap_seek_desc">आगे/पीछे जाने के लिए सेकंड</string>
     <string name="playback_drag_seek">खींचकर आगे/पीछे जाएं</string>
-    <string name="playback_drag_seek_desc">कंट्रोल्स छिपे होने पर वीडियो में जाने के लिए क्षैतिज रूप से खींचें</string>
+    <string name="playback_drag_seek_desc">वीडियो में आगे या पीछे जाने के लिए क्षैतिज रूप से खींचें</string>
     <string name="playback_volume_brightness_gestures">वॉल्यूम और ब्राइटनेस जेस्चर</string>
     <string name="playback_volume_brightness_gestures_desc">कंट्रोल्स छिपे होने पर किनारों पर लंबवत खींचकर वॉल्यूम और ब्राइटनेस बदलें</string>
     <string name="playback_keep_screen_on">स्क्रीन चालू रखें</string>

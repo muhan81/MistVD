@@ -323,7 +323,7 @@
     <string name="playback_double_tap_seek">雙擊快轉/倒轉</string>
     <string name="playback_double_tap_seek_desc">快轉或倒轉的秒數</string>
     <string name="playback_drag_seek">拖曳快轉/倒轉</string>
-    <string name="playback_drag_seek_desc">控制項隱藏時水平拖曳以跳轉影片</string>
+    <string name="playback_drag_seek_desc">在螢幕上水平拖曳，快轉或倒轉影片</string>
     <string name="playback_volume_brightness_gestures">音量和亮度手勢</string>
     <string name="playback_volume_brightness_gestures_desc">控制項隱藏時在兩側垂直拖曳以調整音量和亮度</string>
     <string name="playback_keep_screen_on">保持螢幕常亮</string>

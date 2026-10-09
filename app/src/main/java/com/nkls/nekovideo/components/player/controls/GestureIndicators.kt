@@ -8,9 +8,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +50,8 @@ import com.nkls.nekovideo.R
 fun GestureIndicators(
     seekInfo: String?,
     seekAlignment: Alignment = Alignment.Center,
+    /** 目标时间副行（第 14 轮），如 "12:34"；null = 不显示。 */
+    seekTargetInfo: String? = null,
     volumeInfo: String? = null,
     brightnessInfo: String? = null,
     /** 长按临时加速时的速度角标（第 5 轮），如 "3x"。null = 不显示。 */
@@ -56,10 +60,17 @@ fun GestureIndicators(
     var displayedSeekInfo by remember { mutableStateOf<String?>(null) }
     var displayedVolumeInfo by remember { mutableStateOf<String?>(null) }
     var displayedBrightnessInfo by remember { mutableStateOf<String?>(null) }
+    var displayedSeekTarget by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(seekInfo) {
         if (seekInfo != null) {
             displayedSeekInfo = seekInfo
+        }
+    }
+
+    LaunchedEffect(seekTargetInfo) {
+        if (seekTargetInfo != null) {
+            displayedSeekTarget = seekTargetInfo
         }
     }
 
@@ -84,50 +95,71 @@ fun GestureIndicators(
             modifier = Modifier.align(seekAlignment)
         ) {
             val currentSeekInfo = displayedSeekInfo ?: seekInfo ?: return@AnimatedVisibility
+            val currentSeekTarget = if (seekInfo != null) seekTargetInfo else displayedSeekTarget
 
             Box(
                 modifier = Modifier.padding(32.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val isAdvancing = currentSeekInfo.startsWith("+")
-                    val seekIcon = if (isAdvancing) Icons.Default.FastForward else Icons.Default.FastRewind
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isAdvancing = currentSeekInfo.startsWith("+")
+                        val seekIcon = if (isAdvancing) Icons.Default.FastForward else Icons.Default.FastRewind
 
-                    if (isAdvancing) {
-                        Text(
-                            text = currentSeekInfo,
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            style = TextStyle(
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    offset = Offset(2f, 2f),
-                                    blurRadius = 4f
+                        if (isAdvancing) {
+                            Text(
+                                text = currentSeekInfo,
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = TextStyle(
+                                    shadow = Shadow(
+                                        color = Color.Black,
+                                        offset = Offset(2f, 2f),
+                                        blurRadius = 4f
+                                    )
                                 )
                             )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = seekIcon,
-                            contentDescription = stringResource(R.string.player_seek_forward),
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = seekIcon,
-                            contentDescription = stringResource(R.string.player_seek_backward),
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = seekIcon,
+                                contentDescription = stringResource(R.string.player_seek_forward),
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = seekIcon,
+                                contentDescription = stringResource(R.string.player_seek_backward),
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = currentSeekInfo,
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = TextStyle(
+                                    shadow = Shadow(
+                                        color = Color.Black,
+                                        offset = Offset(2f, 2f),
+                                        blurRadius = 4f
+                                    )
+                                )
+                            )
+                        }
+                    }
+                    if (currentSeekTarget != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = currentSeekInfo,
+                            text = "→ $currentSeekTarget",
                             color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
                             style = TextStyle(
                                 shadow = Shadow(
                                     color = Color.Black,

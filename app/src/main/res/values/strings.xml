@@ -328,7 +328,7 @@
     <string name="playback_double_tap_seek">Pulo Duplo Toque</string>
     <string name="playback_double_tap_seek_desc">Segundos para avançar/voltar</string>
     <string name="playback_drag_seek">Arrastar para avançar/voltar</string>
-    <string name="playback_drag_seek_desc">Arraste na horizontal com os controles ocultos para pular o vídeo</string>
+    <string name="playback_drag_seek_desc">Arraste na horizontal para avançar ou retroceder no vídeo</string>
     <string name="playback_volume_brightness_gestures">Gestos de volume e brilho</string>
     <string name="playback_volume_brightness_gestures_desc">Arraste na vertical nas laterais com os controles ocultos para ajustar volume e brilho</string>
     <string name="playback_keep_screen_on">Manter Tela Ligada</string>

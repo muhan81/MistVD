@@ -312,7 +312,7 @@
     <string name="playback_double_tap_seek">Buscar con Doble Toque</string>
     <string name="playback_double_tap_seek_desc">Segundos para saltar adelante/atrás</string>
     <string name="playback_drag_seek">Arrastrar para avanzar/retroceder</string>
-    <string name="playback_drag_seek_desc">Arrastra horizontalmente con los controles ocultos para saltar en el video</string>
+    <string name="playback_drag_seek_desc">Arrastra horizontalmente para avanzar o retroceder en el video</string>
     <string name="playback_volume_brightness_gestures">Gestos de volumen y brillo</string>
     <string name="playback_volume_brightness_gestures_desc">Arrastra verticalmente en los lados con los controles ocultos para ajustar volumen y brillo</string>
     <string name="playback_keep_screen_on">Mantener Pantalla Encendida</string>

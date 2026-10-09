@@ -270,6 +270,8 @@ fun VideoPlayerOverlay(
     // Estados para controles de gestos
     var seekIndicator by remember { mutableStateOf<String?>(null) }
     var seekSide by remember { mutableStateOf(Alignment.Center) }
+    /** 手势目标时间副行（第 14 轮），如 "12:34"；与 seekIndicator 同步设置、同步清除。 */
+    var seekTargetTime by remember { mutableStateOf<String?>(null) }
     var volumeIndicator by remember { mutableStateOf<String?>(null) }
     var brightnessIndicator by remember { mutableStateOf<String?>(null) }
 
@@ -811,6 +813,24 @@ fun VideoPlayerOverlay(
     fun formatSpeedIndicator(speed: PlaybackSpeed): String {
         val v = speed.value
         return if (v == v.toInt().toFloat()) "${v.toInt()}x" else "${v}x"
+    }
+
+    /**
+     * 手势"目标时间"副行文字（第 14 轮），如 "12:34" / "1:02:03"（小时为 0 时不显示小时段）。
+     *
+     * 时长未知（`durationMs <= 0`）时返回 null = 不显示副行；越界值先夹取到 `[0, 时长]`。
+     */
+    fun formatSeekTargetTime(ms: Long, durationMs: Long): String? {
+        if (durationMs <= 0L) return null
+        val totalSeconds = ms.coerceIn(0L, durationMs) / 1000L
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%02d:%02d", minutes, seconds)
+        }
     }
 
     /**
@@ -1361,6 +1381,7 @@ fun VideoPlayerOverlay(
         if (seekIndicator != null) {
             delay(500)
             seekIndicator = null
+            seekTargetTime = null
         }
     }
 
@@ -1896,12 +1917,18 @@ fun VideoPlayerOverlay(
                                 longPressSpeedIndicator = null
                                 tapCount = 0
                             } else if (slopChange != null) {
-                                if (!isNearEdge && !controlsVisible) {
+                                if (!isNearEdge) {
                                     val initialDragX = slopChange.position.x - downX
                                     val initialDragY = slopChange.position.y - downY
                                     val initialPosition = mediaController?.currentPosition ?: 0L
                                     val videoDuration = mediaController?.duration?.takeIf { it > 0 } ?: 0L
-                                    val seekSensitivity = screenWidth / 30f
+                                    // 第 14 轮：满宽拖动 = 时长÷8，夹取 [30s, 300s]（时长未知时 90s 兜底）
+                                    val fullRangeSeconds = if (videoDuration > 0L) {
+                                        (videoDuration / 1000f / 8f).coerceIn(30f, 300f)
+                                    } else {
+                                        90f
+                                    }
+                                    val seekSensitivity = screenWidth / fullRangeSeconds
                                     val isHorizontalGesture = abs(initialDragX) >= abs(initialDragY)
 
                                     if (isHorizontalGesture && dragSeekEnabled) {
@@ -1915,6 +1942,9 @@ fun VideoPlayerOverlay(
                                                 lastSeekSeconds = seekSeconds
                                                 seekIndicator = if (seekSeconds > 0) "+${seekSeconds}s" else "${seekSeconds}s"
                                                 seekSide = if (seekSeconds > 0) Alignment.CenterEnd else Alignment.CenterStart
+                                                seekTargetTime = formatSeekTargetTime(
+                                                    initialPosition + seekSeconds * 1000L, videoDuration
+                                                )
                                             }
 
                                             val event = awaitPointerEvent()
@@ -1932,7 +1962,7 @@ fun VideoPlayerOverlay(
                                                 controller.seekTo(newPosition)
                                             }
                                         }
-                                    } else if (!isHorizontalGesture && volumeBrightnessGesturesEnabled) {
+                                    } else if (!isHorizontalGesture && volumeBrightnessGesturesEnabled && !controlsVisible) {
                                         val isBrightnessGesture = downX < screenWidth / 2f
                                         val gestureRange = screenHeight * VERTICAL_GESTURE_FULL_RANGE_RATIO
                                         val window = activity?.window
@@ -2023,12 +2053,14 @@ fun VideoPlayerOverlay(
                                             controller.seekTo(newPosition)
                                             seekIndicator = "-${accumulatedDoubleTapSeek / 1000}s"
                                             seekSide = Alignment.CenterStart
+                                            seekTargetTime = formatSeekTargetTime(newPosition, controller.duration)
                                         } else {
                                             // Lado direito - avançar
                                             val newPosition = currentPos + doubleTapSeek
                                             controller.seekTo(newPosition)
                                             seekIndicator = "+${accumulatedDoubleTapSeek / 1000}s"
                                             seekSide = Alignment.CenterEnd
+                                            seekTargetTime = formatSeekTargetTime(newPosition, controller.duration)
                                         }
                                     }
                                 }
@@ -2064,6 +2096,7 @@ fun VideoPlayerOverlay(
                 GestureIndicators(
                     seekInfo = seekIndicator,
                     seekAlignment = seekSide,
+                    seekTargetInfo = seekTargetTime,
                     volumeInfo = volumeIndicator,
                     brightnessInfo = brightnessIndicator,
                     longPressSpeedInfo = longPressSpeedIndicator

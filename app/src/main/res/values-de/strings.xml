@@ -312,7 +312,7 @@
     <string name="playback_double_tap_seek">Doppeltipp-Suche</string>
     <string name="playback_double_tap_seek_desc">Sekunden zum Vor-/Zurückspringen</string>
     <string name="playback_drag_seek">Ziehen zum Spulen</string>
-    <string name="playback_drag_seek_desc">Bei ausgeblendeten Steuerungen horizontal ziehen, um im Video zu springen</string>
+    <string name="playback_drag_seek_desc">Horizontal ziehen, um im Video vor- oder zurückzuspulen</string>
     <string name="playback_volume_brightness_gestures">Gesten für Lautstärke und Helligkeit</string>
     <string name="playback_volume_brightness_gestures_desc">Bei ausgeblendeten Steuerungen seitlich vertikal ziehen, um Lautstärke und Helligkeit anzupassen</string>
     <string name="playback_keep_screen_on">Bildschirm an lassen</string>

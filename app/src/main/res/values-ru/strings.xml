@@ -312,7 +312,7 @@
     <string name="playback_double_tap_seek">Поиск двойным касанием</string>
     <string name="playback_double_tap_seek_desc">Секунд для перехода вперед/назад</string>
     <string name="playback_drag_seek">Перемотка перетаскиванием</string>
-    <string name="playback_drag_seek_desc">Перетаскивайте горизонтально при скрытых элементах управления, чтобы перемещаться по видео</string>
+    <string name="playback_drag_seek_desc">Перетаскивайте горизонтально, чтобы перематывать видео</string>
     <string name="playback_volume_brightness_gestures">Жесты громкости и яркости</string>
     <string name="playback_volume_brightness_gestures_desc">Перетаскивайте вертикально по краям при скрытых элементах управления, чтобы менять громкость и яркость</string>
     <string name="playback_keep_screen_on">Не выключать экран</string>
