@@ -187,6 +187,8 @@ fun VideoPlayerOverlay(
     val activity = lifecycleOwner as? ComponentActivity
     val dragSeekEnabled = SettingsManager.isDragSeekEnabled(context)
     val volumeBrightnessGesturesEnabled = SettingsManager.areVolumeBrightnessGesturesEnabled(context)
+    // 第 15 轮：切换视频时自动旋转开关（关 = 切换时保持当前屏幕方向；打开 = 维持原行为）
+    val autoRotateOnVideoSwitch = SettingsManager.isAutoRotateOnVideoSwitchEnabled(context)
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var isFullscreen by remember { mutableStateOf(false) }
     var hasRefreshed by remember { mutableStateOf(false) }
@@ -257,6 +259,11 @@ fun VideoPlayerOverlay(
     var resumeAfterRotationGate by remember { mutableStateOf(false) }
     var gatedMediaUri by remember { mutableStateOf<String?>(null) }
     var pendingAutoPlayOnReady by remember { mutableStateOf(false) }
+    // 第 15 轮：开关关闭时，被"切换"进来的本条媒体保持当前屏幕方向（不挂门、不定向、不盖黑屏）。
+    var keepOrientationForVideoSwap by remember { mutableStateOf(false) }
+    // 第 15 轮：上一个"真实条目"的 uri —— 用来区分"真打开"与"条目未变的列表重发"
+    //（外挂字幕 / 播放器重建 / 窗口同步都会重发 PLAYLIST_CHANGED，见计划书 §一.4）。
+    var lastTransitionMediaUri by remember { mutableStateOf<String?>(null) }
 
 
     // Timer regressivo para UI (em segundos)
@@ -510,6 +517,14 @@ fun VideoPlayerOverlay(
     }
 
     fun beginRotationGateIfNeeded(controller: MediaController) {
+        // 第 15 轮：开关关闭时，被"切换"进来的视频保持屏幕方向（不挂门、不定向、不盖黑屏）。
+        if (keepOrientationForVideoSwap) {
+            isWaitingForRotationGate = false
+            resumeAfterRotationGate = false
+            gatedMediaUri = null
+            return
+        }
+
         if (!shouldGatePlaybackForRotation(controller)) {
             isWaitingForRotationGate = false
             resumeAfterRotationGate = false
@@ -1581,6 +1596,8 @@ fun VideoPlayerOverlay(
             isWaitingForRotationGate = false
             resumeAfterRotationGate = false
             gatedMediaUri = null
+            // 第 15 轮：关闭播放器时复位"切换冻结"，下次打开按"打开"语义摆正
+            keepOrientationForVideoSwap = false
             hasLoadedVideo = false
             hasRenderedFirstFrame = false
             controlsVisible = false
@@ -1604,7 +1621,7 @@ fun VideoPlayerOverlay(
                     if (!overlayActuallyVisible) return
                     if (isWaitingForRotationGate) {
                         finishRotationGateIfReady(controller, videoSize)
-                    } else if (rotationMode == RotationMode.AUTO) {
+                    } else if (rotationMode == RotationMode.AUTO && !keepOrientationForVideoSwap) {
                         applyRotation(videoSize)
                     }
                 }
@@ -1645,6 +1662,24 @@ fun VideoPlayerOverlay(
                             currentVideoTitle = File(currentVideoPath).nameWithoutExtension
                         }
                     }
+
+                    // ===== 第 15 轮：切换/打开判定（协议详见计划 §二）=====
+                    // SEEK/AUTO＝"切换"→ 冻结；PLAYLIST_CHANGED 且条目**真的换了**＝"打开/换列表"→ 解冻；
+                    // PLAYLIST_CHANGED 但条目未变（外挂字幕/播放器重建/窗口同步）→ 冻结态保持；
+                    // REPEAT（单曲重播同一条）不涉及换视频 → 不动状态。
+                    val transitionUri = mediaItem?.localConfiguration?.uri?.toString()
+                    if (!autoRotateOnVideoSwitch) {
+                        when (reason) {
+                            Player.MEDIA_ITEM_TRANSITION_REASON_SEEK,
+                            Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> keepOrientationForVideoSwap = true
+                            Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED ->
+                                if (transitionUri != null && transitionUri != lastTransitionMediaUri) {
+                                    keepOrientationForVideoSwap = false
+                                }
+                        }
+                    }
+                    // 只在非空时更新：clear→null 的中间事件不覆盖"上一个真实条目"的 uri
+                    if (transitionUri != null) lastTransitionMediaUri = transitionUri
 
                     beginRotationGateIfNeeded(controller)
 
