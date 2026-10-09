@@ -161,6 +161,11 @@ object BeautyColorFilter {
      * 因此映射为：本行系数 = 该列系数，末位 = 第 4 列那三个常数；第 4 位（alpha 系数）恒 0
      * —— 视频帧是不透明的（`a ≡ 1`），所以 alpha 系数与常数在数学上等价，取常数才不丢偏移。
      *
+     * ★ **单位换算（第 14 轮修复）**：第 4 列的常数（下标 12..15，**含 alpha 行**）在 Media3 里是
+     * **归一化 0..1**（`Brightness(b)` 即整体 +b；`Contrast(c)` 的偏移 `0.5·(1-s)`），而 Android
+     * `ColorMatrix` 的平移列是 **0..255**（官方 javadoc：结果钳制 0..255）⇒ 统一 ×255。
+     * alpha 行（`m[15]` 恒 1.0 = 不透明）漏换算的话 `A' ≈ 1/255`，画面会近透明。
+     *
      * 已验证（`javap -c` 打在 media3-effect-1.7.1 上）：
      * `Brightness(b)` = 单位阵经 `android.opengl.Matrix.translateM(…, b, b, b)`（偏移在下标 12..14）；
      * `Contrast(c)` 的偏移恰为 `0.5·(1-s)`（`s = (1+c)/(1.0001-c)`），即以 0.5 为支点的对比度。
@@ -173,7 +178,7 @@ object BeautyColorFilter {
             out[r * 5 + 1] = m[4 + r]
             out[r * 5 + 2] = m[8 + r]
             out[r * 5 + 3] = 0f
-            out[r * 5 + 4] = m[12 + r]
+            out[r * 5 + 4] = m[12 + r] * 255f
         }
         return ColorMatrix(out)
     }

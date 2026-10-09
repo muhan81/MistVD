@@ -25,8 +25,8 @@ android {
         applicationId = "com.nkls.nekovideo"
         minSdk = 30
         targetSdk = 36
-        versionCode = 50
-        versionName = "1.21.3"
+        versionCode = 51
+        versionName = "1.21.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
